@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MeetFlhow
 
-## Getting Started
+AI meeting intelligence: upload or record a meeting, get a transcript (Deepgram), and a summary, action items, decisions, open questions, and sentiment (Gemini).
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Next.js 14 (App Router) · Neon Postgres · Drizzle ORM · NextAuth.js (Auth.js v5, Google OAuth) · Deepgram + Gemini · Tailwind CSS v4 + shadcn/ui
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Install dependencies** (already done if you're reading this from the generated project):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   npm install
+   ```
 
-## Learn More
+2. **Create a Neon database** at [neon.tech](https://neon.tech) and copy its connection string.
 
-To learn more about Next.js, take a look at the following resources:
+3. **Create a Google OAuth client** at the [Google Cloud Console](https://console.cloud.google.com/apis/credentials):
+   - Authorized redirect URI: `http://localhost:3000/api/auth/callback/google` (and your production URL equivalent)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. **Copy `.env.example` to `.env.local`** and fill in real values:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   cp .env.example .env.local
+   ```
 
-## Deploy on Vercel
+   - `DATABASE_URL` — Neon connection string
+   - `NEXTAUTH_SECRET` — generate with `openssl rand -base64 32`
+   - `NEXTAUTH_URL` — `http://localhost:3000` locally
+   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — from step 3
+   - `DEEPGRAM_API_KEY` — from [console.deepgram.com](https://console.deepgram.com)
+   - `GEMINI_API_KEY` — from [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+5. **Push the schema to Neon:**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```bash
+   npm run db:migrate
+   ```
+
+   (A migration is already generated at `drizzle/0000_massive_johnny_storm.sql`. `db:migrate` applies it. Use `npm run db:generate` after future schema changes, and `npm run db:studio` to browse data.)
+
+6. **Run the dev server:**
+
+   ```bash
+   npm run dev
+   ```
+
+## Notes
+
+- The Deepgram and OpenAI calls in `/api/meetings/upload` and `/api/meetings/analyze` can take a while for long meetings — both routes are configured with `maxDuration = 300`. On Vercel, this requires a plan that supports extended function durations.
+- Session strategy is database-backed (Auth.js v5 + Drizzle adapter), so signing out anywhere invalidates the session everywhere.

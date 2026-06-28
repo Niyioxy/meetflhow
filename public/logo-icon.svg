@@ -1,0 +1,9 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MeetFlow icon">
+  <path d="M24 104C24 108 22 112 14 118C20 116 28 110 32 104Z" fill="#2563EB"/>
+  <rect x="8" y="8" width="96" height="96" rx="22" fill="#2563EB"/>
+  <rect x="28" y="46" width="56" height="8" rx="4" fill="white"/>
+  <rect x="28" y="60" width="56" height="8" rx="4" fill="white"/>
+  <rect x="28" y="74" width="36" height="8" rx="4" fill="white"/>
+  <circle cx="100" cy="18" r="16" fill="white"/>
+  <path d="M93 18L98 23L108 12" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
