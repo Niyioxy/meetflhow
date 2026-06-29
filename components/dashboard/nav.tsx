@@ -19,7 +19,7 @@ import {
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: IconHome },
-  { href: "/dashboard", label: "Meetings", icon: IconMicrophone },
+  { href: "/meetings", label: "Meetings", icon: IconMicrophone },
   { href: "/calendar", label: "Calendar", icon: IconCalendar },
   { href: "/tasks", label: "Tasks", icon: IconLayoutKanban },
   { href: "/todos", label: "Todos", icon: IconCheckbox },
@@ -42,7 +42,7 @@ export function DashboardNav({
       <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
         {links.map((link) => {
           const Icon = link.icon;
-          const active = pathname === link.href;
+          const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
           return (
             <Link
               key={link.label}
@@ -119,7 +119,7 @@ export function MobileNav({
       <nav className="flex items-center gap-1 overflow-x-auto border-t border-border px-4 py-2">
         {links.map((link) => {
           const Icon = link.icon;
-          const active = pathname === link.href;
+          const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
           return (
             <Link
               key={link.href}

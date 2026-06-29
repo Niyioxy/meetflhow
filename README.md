@@ -48,5 +48,5 @@ Next.js 14 (App Router) · Neon Postgres · Drizzle ORM · NextAuth.js (Auth.js 
 
 ## Notes
 
-- The Deepgram and OpenAI calls in `/api/meetings/upload` and `/api/meetings/analyze` can take a while for long meetings — both routes are configured with `maxDuration = 300`. On Vercel, this requires a plan that supports extended function durations.
+- The Deepgram and Gemini calls in `/api/meetings/upload` and `/api/meetings/analyze` can take a while for long meetings — both routes are configured with `maxDuration = 300`. On Vercel, this requires a plan that supports extended function durations.
 - Session strategy is database-backed (Auth.js v5 + Drizzle adapter), so signing out anywhere invalidates the session everywhere.
