@@ -12,6 +12,7 @@ import { MeetingCoachCard } from "@/components/meeting/meeting-coach-card";
 import { SentimentTimelineCard } from "@/components/meeting/sentiment-timeline-card";
 import { TranscriptCard } from "@/components/meeting/transcript-card";
 import { FollowUpEmailButton } from "@/components/meeting/follow-up-email-button";
+import { MeetingCostCard } from "@/components/meeting/meeting-cost-card";
 
 export default async function MeetingDetailPage({
   params,
@@ -113,6 +114,22 @@ export default async function MeetingDetailPage({
             priority: item.priority,
             status: item.status,
           }))}
+        />
+      )}
+
+      {meeting.status === "ready" && (
+        <MeetingCostCard
+          meetingId={meeting.id}
+          durationSeconds={meeting.durationSeconds}
+          initialAttendees={meeting.attendeeSalaries ?? null}
+          initialCost={meeting.calculatedCost ?? null}
+          suggestedNames={Array.from(
+            new Set(
+              (meeting.transcript?.speakerSegments ?? [])
+                .map((s) => s.speaker)
+                .filter((name) => name && name !== "Unknown")
+            )
+          )}
         />
       )}
 

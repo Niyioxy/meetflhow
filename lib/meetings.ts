@@ -4,6 +4,9 @@ import { analyzeTranscript } from "@/lib/gemini/analyze";
 import { generateMeetingCoachScore } from "@/lib/gemini/coach";
 import { generateSentimentTimeline } from "@/lib/gemini/sentiment";
 import { identifySpeakers } from "@/lib/gemini/speakers";
+import { generateCostVerdict } from "@/lib/gemini/cost-benchmark";
+import { calculateMeetingCost } from "@/lib/cost";
+import type { AttendeeSalary, CalculatedCost } from "@/types/cost";
 import { eq } from "drizzle-orm";
 
 async function getOrCreateAnalysisRow(meetingId: string) {
@@ -155,6 +158,59 @@ export async function runAllMeetingAnalyses(
   if (!coreOk) {
     throw new Error("Meeting analysis failed");
   }
+}
+
+export async function saveAttendeeSalaries(meetingId: string, attendees: AttendeeSalary[]) {
+  await db.update(meetings).set({ attendeeSalaries: attendees, calculatedCost: null }).where(eq(meetings.id, meetingId));
+}
+
+export async function runMeetingCostAnalysis(meetingId: string): Promise<CalculatedCost> {
+  const meeting = await db.query.meetings.findFirst({
+    where: (m, { eq }) => eq(m.id, meetingId),
+    with: { analysis: true, actionItems: true },
+  });
+
+  if (!meeting) {
+    throw new Error("Meeting not found");
+  }
+  if (!meeting.attendeeSalaries || meeting.attendeeSalaries.length === 0) {
+    throw new Error("No attendee salaries saved for this meeting");
+  }
+  if (!meeting.durationSeconds) {
+    throw new Error("Meeting has no duration yet");
+  }
+
+  const calc = calculateMeetingCost(meeting.attendeeSalaries, meeting.durationSeconds);
+
+  const existing = meeting.calculatedCost;
+  if (existing && existing.signature === calc.signature && existing.verdict) {
+    return existing;
+  }
+
+  let verdict: { verdict: string; reasoning: string; suggestion: string } | null = null;
+  try {
+    verdict = await generateCostVerdict({
+      title: meeting.title,
+      totalCost: calc.total_cost,
+      currency: calc.currency,
+      durationMinutes: Math.round(meeting.durationSeconds / 60),
+      summary: meeting.analysis?.summary ?? null,
+      decisionsCount: meeting.analysis?.decisions.length ?? 0,
+      actionItemsCount: meeting.actionItems.length,
+    });
+  } catch (error) {
+    console.error("Cost benchmark failed", error);
+  }
+
+  const result: CalculatedCost = {
+    ...calc,
+    verdict: (verdict?.verdict as CalculatedCost["verdict"]) ?? null,
+    reasoning: verdict?.reasoning ?? null,
+    suggestion: verdict?.suggestion ?? null,
+  };
+
+  await db.update(meetings).set({ calculatedCost: result }).where(eq(meetings.id, meetingId));
+  return result;
 }
 
 export function wordCount(text: string): number {

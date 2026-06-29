@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Trash2 } from "lucide-react";
 import { scheduledMeetingPlatformEnum } from "@/db/schema";
 import { AgendaSuggestion } from "@/components/scheduler/agenda-suggestion";
+import { EstimatedCostPreview } from "@/components/scheduler/estimated-cost-preview";
 
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
 
@@ -54,6 +55,11 @@ export function ScheduleMeetingForm({
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const attendeeList = attendees
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !date || !time) {
@@ -62,10 +68,6 @@ export function ScheduleMeetingForm({
     }
 
     const scheduledAt = new Date(`${date}T${time}`);
-    const attendeeList = attendees
-      .split(",")
-      .map((email) => email.trim())
-      .filter(Boolean);
 
     setSubmitting(true);
     try {
@@ -201,12 +203,11 @@ export function ScheduleMeetingForm({
             <p className="text-xs text-muted-foreground">Comma-separated email addresses</p>
           </div>
 
+          <EstimatedCostPreview attendees={attendeeList} durationMinutes={durationMinutes} />
+
           <AgendaSuggestion
             title={title}
-            attendees={attendees
-              .split(",")
-              .map((email) => email.trim())
-              .filter(Boolean)}
+            attendees={attendeeList}
             scheduledAt={date && time ? new Date(`${date}T${time}`).toISOString() : ""}
             onAddToNotes={(text) =>
               setNotes((prev) => (prev ? `${prev}\n\n${text}` : text))

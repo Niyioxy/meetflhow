@@ -15,21 +15,31 @@ import {
   IconLayoutKanban,
   IconCheckbox,
   IconSettings,
+  IconChartBar,
+  IconUsers,
 } from "@tabler/icons-react";
+import type { UserRole } from "@/db/schema";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: IconHome },
   { href: "/meetings", label: "Meetings", icon: IconMicrophone },
   { href: "/calendar", label: "Calendar", icon: IconCalendar },
+  { href: "/insights", label: "Insights", icon: IconChartBar },
   { href: "/tasks", label: "Tasks", icon: IconLayoutKanban },
   { href: "/todos", label: "Todos", icon: IconCheckbox },
   { href: "/settings", label: "Settings", icon: IconSettings },
 ];
 
+const teamLink = { href: "/team", label: "Team", icon: IconUsers };
+
+function visibleLinks(role: UserRole | undefined) {
+  return role === "manager" || role === "admin" ? [...links, teamLink] : links;
+}
+
 export function DashboardNav({
   user,
 }: {
-  user: { name?: string | null; email?: string | null; image?: string | null };
+  user: { name?: string | null; email?: string | null; image?: string | null; role?: UserRole };
 }) {
   const pathname = usePathname();
 
@@ -40,7 +50,7 @@ export function DashboardNav({
       </Link>
 
       <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-        {links.map((link) => {
+        {visibleLinks(user.role).map((link) => {
           const Icon = link.icon;
           const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
           return (
@@ -89,7 +99,7 @@ export function DashboardNav({
 export function MobileNav({
   user,
 }: {
-  user: { name?: string | null; email?: string | null; image?: string | null };
+  user: { name?: string | null; email?: string | null; image?: string | null; role?: UserRole };
 }) {
   const pathname = usePathname();
 
@@ -117,7 +127,7 @@ export function MobileNav({
         </div>
       </div>
       <nav className="flex items-center gap-1 overflow-x-auto border-t border-border px-4 py-2">
-        {links.map((link) => {
+        {visibleLinks(user.role).map((link) => {
           const Icon = link.icon;
           const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
           return (

@@ -22,6 +22,13 @@
       "when": 1782630496007,
       "tag": "0002_slippery_hardball",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782767692019,
+      "tag": "0003_unique_rattler",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import {
   primaryKey,
   boolean,
   jsonb,
+  date,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 import { relations } from "drizzle-orm";
@@ -15,6 +16,11 @@ import type {
   SentimentTimeline,
   SpeakerSegment,
 } from "@/types/analysis";
+import type { AttendeeSalary, CalculatedCost } from "@/types/cost";
+import type { InsightsCache } from "@/types/insights";
+
+export const userRoleEnum = ["member", "manager", "admin"] as const;
+export type UserRole = (typeof userRoleEnum)[number];
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -22,6 +28,8 @@ export const users = pgTable("users", {
   name: text("name"),
   image: text("image"),
   emailVerified: timestamp("email_verified", { mode: "date" }),
+  role: text("role").$type<UserRole>().notNull().default("member"),
+  insightsCache: jsonb("insights_cache").$type<InsightsCache>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -85,6 +93,8 @@ export const meetings = pgTable("meetings", {
   platform: text("platform").notNull().default("other"),
   durationSeconds: integer("duration_seconds"),
   status: text("status").$type<MeetingStatus>().notNull().default("uploading"),
+  attendeeSalaries: jsonb("attendee_salaries").$type<AttendeeSalary[]>(),
+  calculatedCost: jsonb("calculated_cost").$type<CalculatedCost>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -114,6 +124,8 @@ export const actionItems = pgTable("action_items", {
   task: text("task").notNull(),
   owner: text("owner"),
   deadline: text("deadline"),
+  dueDate: date("due_date"),
+  completedAt: timestamp("completed_at"),
   priority: text("priority").$type<Priority>().notNull().default("medium"),
   status: text("status").$type<ActionItemStatus>().notNull().default("todo"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
