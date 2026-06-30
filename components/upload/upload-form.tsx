@@ -12,17 +12,42 @@ import { Button } from "@/components/ui/button";
 import { FileDropzone } from "@/components/upload/file-dropzone";
 import { PlatformSelect } from "@/components/upload/platform-select";
 import { Loader2, Sparkles } from "lucide-react";
+import { useWorkspace } from "@/components/providers/workspace-provider";
+import { Switch } from "@/components/ui/switch";
+
+function ShareWithWorkspaceToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const { workspaces } = useWorkspace();
+  if (workspaces.length === 0) return null;
+
+  return (
+    <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+      <Label htmlFor="share-with-workspace" className="text-sm font-normal">
+        Share with workspace
+      </Label>
+      <Switch id="share-with-workspace" checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
 
 export function UploadForm() {
   const router = useRouter();
+  const { activeWorkspaceId } = useWorkspace();
 
   const [file, setFile] = useState<File | null>(null);
   const [fileTitle, setFileTitle] = useState("");
   const [filePlatform, setFilePlatform] = useState("other");
+  const [fileShared, setFileShared] = useState(false);
   const [fileSubmitting, setFileSubmitting] = useState(false);
 
   const [pastedTitle, setPastedTitle] = useState("");
   const [pastedPlatform, setPastedPlatform] = useState("other");
+  const [pasteShared, setPasteShared] = useState(false);
   const [transcriptText, setTranscriptText] = useState("");
   const [pasteSubmitting, setPasteSubmitting] = useState(false);
 
@@ -37,6 +62,10 @@ export function UploadForm() {
       formData.append("file", file);
       formData.append("title", fileTitle || file.name);
       formData.append("platform", filePlatform);
+      if (activeWorkspaceId) {
+        formData.append("workspaceId", activeWorkspaceId);
+        formData.append("sharedWithWorkspace", String(fileShared));
+      }
 
       const res = await fetch("/api/meetings/upload", {
         method: "POST",
@@ -71,6 +100,9 @@ export function UploadForm() {
           title: pastedTitle,
           platform: pastedPlatform,
           transcriptText,
+          ...(activeWorkspaceId
+            ? { workspaceId: activeWorkspaceId, sharedWithWorkspace: pasteShared }
+            : {}),
         }),
       });
       const data = await res.json();
@@ -121,6 +153,8 @@ export function UploadForm() {
                 <PlatformSelect value={filePlatform} onChange={setFilePlatform} />
               </div>
             </div>
+
+            <ShareWithWorkspaceToggle checked={fileShared} onChange={setFileShared} />
 
             <Button onClick={handleFileSubmit} disabled={fileSubmitting || !file}>
               {fileSubmitting ? (
@@ -174,6 +208,8 @@ export function UploadForm() {
                 onChange={(e) => setTranscriptText(e.target.value)}
               />
             </div>
+
+            <ShareWithWorkspaceToggle checked={pasteShared} onChange={setPasteShared} />
 
             <Button onClick={handlePasteSubmit} disabled={pasteSubmitting || !transcriptText.trim()}>
               {pasteSubmitting ? (

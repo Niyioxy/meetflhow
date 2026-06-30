@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { meetings, transcripts } from "@/db/schema";
 import { transcribeAudio } from "@/lib/deepgram/transcribe";
 import { runAllMeetingAnalyses, wordCount } from "@/lib/meetings";
+import { getWorkspaceMember } from "@/lib/workspace-auth";
 import { eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
@@ -19,9 +20,19 @@ export async function POST(req: Request) {
   const file = formData.get("file");
   const title = (formData.get("title") as string | null)?.trim();
   const platform = (formData.get("platform") as string | null) || "other";
+  const workspaceId = (formData.get("workspaceId") as string | null) || null;
+  const sharedWithWorkspace = formData.get("sharedWithWorkspace") === "true";
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
+  }
+
+  if (workspaceId) {
+    try {
+      await getWorkspaceMember(session.user.id, workspaceId);
+    } catch {
+      return NextResponse.json({ error: "Not a member of that workspace" }, { status: 403 });
+    }
   }
 
   const [meeting] = await db
@@ -31,6 +42,8 @@ export async function POST(req: Request) {
       title: title || file.name || "Untitled meeting",
       platform,
       status: "uploading",
+      workspaceId,
+      sharedWithWorkspace: workspaceId ? sharedWithWorkspace : false,
     })
     .returning();
 

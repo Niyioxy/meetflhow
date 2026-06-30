@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { meetings } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { MeetingsList } from "@/components/dashboard/meetings-list";
 import { Mic, UploadCloud } from "lucide-react";
@@ -11,10 +11,24 @@ export default async function MeetingsPage() {
   const session = await auth();
   const userId = session!.user.id;
 
+  const memberWorkspaceIds = (
+    await db.query.workspaceMembers.findMany({
+      where: (m, { eq }) => eq(m.userId, userId),
+      columns: { workspaceId: true },
+    })
+  ).map((m) => m.workspaceId);
+
   const rows = await db
     .select()
     .from(meetings)
-    .where(eq(meetings.userId, userId))
+    .where(
+      memberWorkspaceIds.length > 0
+        ? or(
+            eq(meetings.userId, userId),
+            and(eq(meetings.sharedWithWorkspace, true), inArray(meetings.workspaceId, memberWorkspaceIds))
+          )
+        : eq(meetings.userId, userId)
+    )
     .orderBy(desc(meetings.createdAt));
 
   return (

@@ -17,7 +17,7 @@ export async function sendMeetingReminderEmail({
   const time = format(scheduledAt, "MMM d, yyyy 'at' h:mm a");
 
   await getResendClient().emails.send({
-    from: process.env.EMAIL_FROM || "MeetFlow <reminders@meetflow.app>",
+    from: process.env.EMAIL_FROM || "MeetFlhow <reminders@meetflow.app>",
     to,
     subject: `Reminder: "${title}" starts in 30 minutes`,
     html: `

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { isCalendarConnected } from "@/lib/google/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,6 +32,30 @@ export default async function SettingsPage() {
             <p className="font-medium">{user.name ?? "—"}</p>
             <p className="text-sm text-muted-foreground">{user.email}</p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Workspace</CardTitle>
+          <CardDescription>Manage members, roles, and invites for your workspace.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" asChild>
+            <Link href="/settings/workspace">Manage Workspace</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Integrations</CardTitle>
+          <CardDescription>Connect Slack, Notion, Jira, Linear, webhooks, and the Chrome extension.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" asChild>
+            <Link href="/settings/integrations">Manage Integrations</Link>
+          </Button>
         </CardContent>
       </Card>
 

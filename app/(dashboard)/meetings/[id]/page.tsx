@@ -13,6 +13,9 @@ import { SentimentTimelineCard } from "@/components/meeting/sentiment-timeline-c
 import { TranscriptCard } from "@/components/meeting/transcript-card";
 import { FollowUpEmailButton } from "@/components/meeting/follow-up-email-button";
 import { MeetingCostCard } from "@/components/meeting/meeting-cost-card";
+import { ShareModal } from "@/components/meeting/share-modal";
+import { PostToSlackButton } from "@/components/meeting/post-to-slack-button";
+import { PushToNotionButton } from "@/components/meeting/push-to-notion-button";
 
 export default async function MeetingDetailPage({
   params,
@@ -44,7 +47,14 @@ export default async function MeetingDetailPage({
         <div className="flex items-center gap-2">
           <StatusBadge status={meeting.status} />
           {meeting.analysis && <SentimentBadge sentiment={meeting.analysis.sentiment} />}
+          {meeting.status === "ready" && <ShareModal meetingId={meeting.id} />}
           {meeting.status === "ready" && <FollowUpEmailButton meetingId={meeting.id} />}
+          {meeting.status === "ready" && meeting.workspaceId && (
+            <PostToSlackButton meetingId={meeting.id} />
+          )}
+          {meeting.status === "ready" && meeting.workspaceId && (
+            <PushToNotionButton meetingId={meeting.id} initialPushed={Boolean(meeting.notionPageId)} />
+          )}
         </div>
       </div>
 
@@ -110,6 +120,7 @@ export default async function MeetingDetailPage({
             id: item.id,
             task: item.task,
             owner: item.owner,
+            assigneeUserId: item.assigneeUserId,
             deadline: item.deadline,
             priority: item.priority,
             status: item.status,
@@ -154,6 +165,7 @@ export default async function MeetingDetailPage({
           wordCount={meeting.transcript.wordCount}
           language={meeting.transcript.language}
           initialSegments={meeting.transcript.speakerSegments ?? null}
+          workspaceId={meeting.workspaceId}
         />
       )}
     </div>

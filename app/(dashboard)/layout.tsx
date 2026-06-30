@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { DashboardNav, MobileNav } from "@/components/dashboard/nav";
+import { DashboardTopbar } from "@/components/dashboard/topbar";
+import { WorkspaceProvider } from "@/components/providers/workspace-provider";
 
 export default async function DashboardGroupLayout({
   children,
@@ -13,12 +15,15 @@ export default async function DashboardGroupLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)]">
-      <DashboardNav user={session.user} />
-      <MobileNav user={session.user} />
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:pl-[calc(15rem+2rem)]">
-        {children}
-      </main>
-    </div>
+    <WorkspaceProvider>
+      <div className="min-h-screen bg-[var(--bg-base)]">
+        <DashboardNav user={session.user} />
+        <MobileNav user={session.user} />
+        <DashboardTopbar />
+        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:pl-[calc(15rem+2rem)]">
+          {children}
+        </main>
+      </div>
+    </WorkspaceProvider>
   );
 }

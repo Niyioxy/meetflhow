@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { tasks, priorityEnum, taskStatusEnum } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { triggerWebhooks } from "@/lib/webhooks";
 
 const bodySchema = z.object({
   title: z.string().min(1),
@@ -69,6 +70,20 @@ export async function POST(req: Request) {
       dueDate: dueDate ? new Date(dueDate) : null,
     })
     .returning();
+
+  if (created.meetingId) {
+    const meeting = await db.query.meetings.findFirst({
+      where: (m, { eq }) => eq(m.id, created.meetingId!),
+    });
+    if (meeting?.workspaceId) {
+      await triggerWebhooks(meeting.workspaceId, "task.created", {
+        task_id: created.id,
+        title: created.title,
+        priority: created.priority,
+        status: created.status,
+      });
+    }
+  }
 
   return NextResponse.json({ task: created }, { status: 201 });
 }

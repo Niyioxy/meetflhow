@@ -29,6 +29,20 @@
       "when": 1782767692019,
       "tag": "0003_unique_rattler",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782769160255,
+      "tag": "0004_good_rawhide_kid",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782842334590,
+      "tag": "0005_bizarre_lyja",
+      "breakpoints": true
     }
   ]
 }

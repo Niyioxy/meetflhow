@@ -12,7 +12,7 @@ export async function sendFollowUpEmail({
   bodyHtml: string;
 }) {
   await getResendClient().emails.send({
-    from: process.env.EMAIL_FROM || "MeetFlow <reminders@meetflow.app>",
+    from: process.env.EMAIL_FROM || "MeetFlhow <reminders@meetflow.app>",
     to,
     ...(replyTo ? { replyTo } : {}),
     subject,

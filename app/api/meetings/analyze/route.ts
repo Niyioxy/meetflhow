@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { meetings, transcripts } from "@/db/schema";
 import { runAllMeetingAnalyses, wordCount } from "@/lib/meetings";
+import { getWorkspaceMember } from "@/lib/workspace-auth";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -13,6 +14,8 @@ const bodySchema = z.object({
   title: z.string().optional(),
   platform: z.string().optional(),
   transcriptText: z.string().min(1).optional(),
+  workspaceId: z.string().uuid().nullable().optional(),
+  sharedWithWorkspace: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -27,8 +30,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { meetingId, title, platform, transcriptText } = parsed.data;
+  const { meetingId, title, platform, transcriptText, workspaceId, sharedWithWorkspace } = parsed.data;
   const userId = session.user.id;
+
+  if (workspaceId) {
+    try {
+      await getWorkspaceMember(userId, workspaceId);
+    } catch {
+      return NextResponse.json({ error: "Not a member of that workspace" }, { status: 403 });
+    }
+  }
 
   let targetMeetingId: string;
   let textToAnalyze: string;
@@ -66,6 +77,8 @@ export async function POST(req: Request) {
         title: title?.trim() || "Pasted transcript",
         platform: platform || "other",
         status: "transcribing",
+        workspaceId: workspaceId ?? null,
+        sharedWithWorkspace: workspaceId ? Boolean(sharedWithWorkspace) : false,
       })
       .returning();
 

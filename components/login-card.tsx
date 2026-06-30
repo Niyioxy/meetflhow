@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Logo } from "@/components/ui/logo";
 
-export function LoginCard() {
+export function LoginCard({ callbackUrl = "/dashboard" }: { callbackUrl?: string }) {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center">
@@ -19,7 +19,7 @@ export function LoginCard() {
         <Button
           className="w-full"
           size="lg"
-          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+          onClick={() => signIn("google", { callbackUrl })}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path

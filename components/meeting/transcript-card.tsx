@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Loader2, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { initialsFromName, colorFromName } from "@/lib/avatar";
+import { cn } from "@/lib/utils";
+import { CommentThreadPanel } from "@/components/meeting/comment-thread-panel";
 import type { SpeakerSegment } from "@/types/analysis";
+import type { TranscriptCommentView } from "@/types/comments";
 
 type ViewMode = "speaker" | "full";
 
@@ -15,16 +19,88 @@ export function TranscriptCard({
   wordCount,
   language,
   initialSegments,
+  workspaceId = null,
 }: {
   meetingId: string;
   fullText: string;
   wordCount: number;
   language: string | null;
   initialSegments: SpeakerSegment[] | null;
+  workspaceId?: string | null;
 }) {
   const [segments, setSegments] = useState(initialSegments);
   const [loadingSegments, setLoadingSegments] = useState(!initialSegments);
   const [mode, setMode] = useState<ViewMode>("full");
+  const [comments, setComments] = useState<TranscriptCommentView[]>([]);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [focusSegmentIndex, setFocusSegmentIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/meetings/${meetingId}/comments`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => setComments(data.comments ?? []))
+      .catch(() => setComments([]));
+  }, [meetingId]);
+
+  function commentsFor(segmentIndex: number) {
+    return comments.filter((c) => c.segment_index === segmentIndex);
+  }
+
+  function openSegmentThread(segmentIndex: number) {
+    setFocusSegmentIndex(segmentIndex);
+    setPanelOpen(true);
+  }
+
+  async function refreshComments() {
+    const res = await fetch(`/api/meetings/${meetingId}/comments`);
+    if (res.ok) {
+      const data = await res.json();
+      setComments(data.comments ?? []);
+    }
+  }
+
+  async function handleCreateComment(segmentIndex: number, text: string) {
+    const seg = segments?.[segmentIndex];
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          segment_index: segmentIndex,
+          selected_text: seg?.text ?? "",
+          comment: text,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      await refreshComments();
+    } catch {
+      toast.error("Failed to add comment");
+    }
+  }
+
+  async function handleReply(commentId: string, text: string) {
+    try {
+      const res = await fetch(`/api/comments/${commentId}/replies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reply: text }),
+      });
+      if (!res.ok) throw new Error();
+      await refreshComments();
+    } catch {
+      toast.error("Failed to add reply");
+    }
+  }
+
+  async function handleToggleResolve(commentId: string) {
+    try {
+      const res = await fetch(`/api/comments/${commentId}/resolve`, { method: "POST" });
+      if (!res.ok) throw new Error();
+      await refreshComments();
+    } catch {
+      toast.error("Failed to update comment");
+    }
+  }
 
   useEffect(() => {
     if (segments) return;
@@ -70,7 +146,7 @@ export function TranscriptCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-4">
-        <CardTitle>Transcript</CardTitle>
+        <CardTitle>Transcript{comments.length > 0 ? ` (${comments.length})` : ""}</CardTitle>
         <div className="flex items-center gap-2">
           {loadingSegments && (
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -130,23 +206,44 @@ export function TranscriptCard({
 
         {mode === "speaker" && hasSegments ? (
           <div className="flex max-h-96 flex-col gap-4 overflow-y-auto rounded-md bg-muted/30 p-4">
-            {segments!.map((seg, i) => (
-              <div key={i} className="flex gap-3">
+            {segments!.map((seg, i) => {
+              const segComments = commentsFor(i);
+              return (
                 <div
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-                  style={{ backgroundColor: colorFromName(seg.speaker) }}
+                  key={i}
+                  className={cn(
+                    "group/segment flex gap-3 rounded-md border-l-2 px-2 py-1 -mx-2",
+                    segComments.length > 0 ? "border-l-[var(--blue-primary)]" : "border-l-transparent"
+                  )}
                 >
-                  {initialsFromName(seg.speaker)}
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold">{seg.speaker}</span>
-                    <span className="text-xs text-muted-foreground">{seg.timestamp_approx}</span>
+                  <div
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                    style={{ backgroundColor: colorFromName(seg.speaker) }}
+                  >
+                    {initialsFromName(seg.speaker)}
                   </div>
-                  <p className="text-sm leading-relaxed">{seg.text}</p>
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold">{seg.speaker}</span>
+                      <span className="text-xs text-muted-foreground">{seg.timestamp_approx}</span>
+                    </div>
+                    <p className="text-sm leading-relaxed">{seg.text}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openSegmentThread(i)}
+                    className={cn(
+                      "flex shrink-0 items-center gap-1 self-start rounded-full px-1.5 py-0.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/segment:opacity-100",
+                      segComments.length > 0 && "opacity-100"
+                    )}
+                    title="Comment on this"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    {segComments.length > 0 && <span>{segComments.length}</span>}
+                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="max-h-96 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/30 p-4 text-sm leading-relaxed">
@@ -159,6 +256,17 @@ export function TranscriptCard({
           {language ? ` · ${language}` : ""}
         </p>
       </CardContent>
+
+      <CommentThreadPanel
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+        comments={comments}
+        focusSegmentIndex={focusSegmentIndex}
+        workspaceId={workspaceId}
+        onCreateComment={handleCreateComment}
+        onReply={handleReply}
+        onToggleResolve={handleToggleResolve}
+      />
     </Card>
   );
 }

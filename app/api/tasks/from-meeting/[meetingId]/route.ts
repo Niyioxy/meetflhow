@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { tasks } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { triggerWebhooks } from "@/lib/webhooks";
 
 export async function POST(
   _req: Request,
@@ -48,6 +49,17 @@ export async function POST(
       }))
     )
     .returning();
+
+  await Promise.all(
+    created.map((task) =>
+      triggerWebhooks(meeting.workspaceId, "task.created", {
+        task_id: task.id,
+        title: task.title,
+        priority: task.priority,
+        status: task.status,
+      })
+    )
+  );
 
   return NextResponse.json({ created: created.length, tasks: created }, { status: 201 });
 }

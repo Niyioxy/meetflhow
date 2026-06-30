@@ -50,6 +50,11 @@ export async function POST(req: Request) {
     })
     .returning();
 
+  // Note: "todo.created" is a selectable webhook event, but todos have no
+  // workspace association in this schema (purely personal, userId-only), so
+  // there's no workspace to scope a delivery to. Left unwired until todos
+  // gain a workspace concept.
+
   return NextResponse.json({ todo: created }, { status: 201 });
 }
 

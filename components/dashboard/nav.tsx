@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
+import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { LogOut } from "lucide-react";
 import {
   IconHome,
@@ -48,6 +50,10 @@ export function DashboardNav({
       <Link href="/dashboard" className="flex h-16 items-center px-5">
         <Logo size="sm" />
       </Link>
+
+      <div className="px-3 pb-2">
+        <WorkspaceSwitcher />
+      </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
         {visibleLinks(user.role).map((link) => {
@@ -110,6 +116,8 @@ export function MobileNav({
           <Logo size="sm" />
         </Link>
         <div className="flex items-center gap-3">
+          <WorkspaceSwitcher compact />
+          <NotificationBell />
           <Avatar className="h-8 w-8">
             <AvatarImage src={user.image ?? undefined} alt={user.name ?? ""} />
             <AvatarFallback>

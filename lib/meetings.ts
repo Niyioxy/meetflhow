@@ -6,6 +6,8 @@ import { generateSentimentTimeline } from "@/lib/gemini/sentiment";
 import { identifySpeakers } from "@/lib/gemini/speakers";
 import { generateCostVerdict } from "@/lib/gemini/cost-benchmark";
 import { calculateMeetingCost } from "@/lib/cost";
+import { triggerWebhooks } from "@/lib/webhooks";
+import { postMeetingToSlack } from "@/lib/integrations/slack";
 import type { AttendeeSalary, CalculatedCost } from "@/types/cost";
 import { eq } from "drizzle-orm";
 
@@ -46,15 +48,18 @@ export async function runMeetingAnalysis(meetingId: string, transcriptText: stri
     .where(eq(analysis.id, row.id));
 
   if (result.actionItems.length > 0) {
-    await db.insert(actionItems).values(
-      result.actionItems.map((item) => ({
-        meetingId,
-        task: item.task,
-        owner: item.owner,
-        deadline: item.deadline,
-        priority: item.priority,
-      }))
-    );
+    const createdItems = await db
+      .insert(actionItems)
+      .values(
+        result.actionItems.map((item) => ({
+          meetingId,
+          task: item.task,
+          owner: item.owner,
+          deadline: item.deadline,
+          priority: item.priority,
+        }))
+      )
+      .returning();
 
     const meeting = await db.query.meetings.findFirst({
       where: (m, { eq }) => eq(m.id, meetingId),
@@ -70,6 +75,18 @@ export async function runMeetingAnalysis(meetingId: string, transcriptText: stri
           assignedTo: item.owner,
         }))
       );
+
+      await Promise.all(
+        createdItems.map((item) =>
+          triggerWebhooks(meeting.workspaceId, "action_item.created", {
+            action_item_id: item.id,
+            task: item.task,
+            owner: item.owner,
+            due_date: item.dueDate,
+            meeting_id: meetingId,
+          })
+        )
+      );
     }
   }
 
@@ -82,6 +99,16 @@ export async function runMeetingCoach(meetingId: string, transcriptText: string)
 
   const score = await generateMeetingCoachScore(transcriptText);
   await db.update(analysis).set({ meetingScore: score }).where(eq(analysis.id, row.id));
+
+  const meeting = await db.query.meetings.findFirst({
+    where: (m, { eq }) => eq(m.id, meetingId),
+  });
+  await triggerWebhooks(meeting?.workspaceId, "meeting.scored", {
+    meeting_id: meetingId,
+    title: meeting?.title ?? null,
+    overall_score: score.overall_score,
+  });
+
   return score;
 }
 
@@ -118,6 +145,24 @@ export async function runSpeakerIdentification(
   return segments;
 }
 
+async function autoPostToSlackIfEnabled(meetingId: string, workspaceId: string | null) {
+  if (!workspaceId) return;
+
+  try {
+    const settings = await db.query.slackPostSettings.findFirst({
+      where: (s, { eq }) => eq(s.workspaceId, workspaceId),
+    });
+    if (!settings || (!settings.autoPostSummary && !settings.autoPostActionItems)) return;
+
+    await postMeetingToSlack(meetingId, {
+      includeSummary: settings.autoPostSummary,
+      includeActionItems: settings.autoPostActionItems,
+    });
+  } catch (error) {
+    console.error("Auto-post to Slack failed", error);
+  }
+}
+
 /**
  * Runs the core analysis plus the three supplementary AI analyses in parallel.
  * Supplementary failures are logged and swallowed so one flaky call doesn't
@@ -150,10 +195,29 @@ export async function runAllMeetingAnalyses(
     settle(runSentimentTimeline(meetingId, transcriptText)),
   ]);
 
-  await db
+  const [updatedMeeting] = await db
     .update(meetings)
     .set({ status: coreOk ? "ready" : "failed" })
-    .where(eq(meetings.id, meetingId));
+    .where(eq(meetings.id, meetingId))
+    .returning();
+
+  if (coreOk && updatedMeeting) {
+    const analysisRow = await db.query.analysis.findFirst({
+      where: (a, { eq }) => eq(a.meetingId, meetingId),
+    });
+
+    await Promise.all([
+      triggerWebhooks(updatedMeeting.workspaceId, "meeting.completed", {
+        meeting_id: updatedMeeting.id,
+        title: updatedMeeting.title,
+        platform: updatedMeeting.platform,
+        duration_seconds: updatedMeeting.durationSeconds,
+        summary: analysisRow?.summary ?? null,
+        url: `${process.env.NEXTAUTH_URL}/meetings/${updatedMeeting.id}`,
+      }),
+      autoPostToSlackIfEnabled(meetingId, updatedMeeting.workspaceId),
+    ]);
+  }
 
   if (!coreOk) {
     throw new Error("Meeting analysis failed");
@@ -220,7 +284,7 @@ export function wordCount(text: string): number {
 
 export async function getMeetingDetail(meetingId: string, userId: string) {
   const meeting = await db.query.meetings.findFirst({
-    where: (m, { and, eq }) => and(eq(m.id, meetingId), eq(m.userId, userId)),
+    where: (m, { eq }) => eq(m.id, meetingId),
     with: {
       transcript: true,
       analysis: true,
@@ -228,7 +292,17 @@ export async function getMeetingDetail(meetingId: string, userId: string) {
     },
   });
 
-  return meeting ?? null;
+  if (!meeting) return null;
+  if (meeting.userId === userId) return meeting;
+
+  if (meeting.sharedWithWorkspace && meeting.workspaceId) {
+    const membership = await db.query.workspaceMembers.findFirst({
+      where: (m, { and, eq }) => and(eq(m.workspaceId, meeting.workspaceId!), eq(m.userId, userId)),
+    });
+    if (membership) return meeting;
+  }
+
+  return null;
 }
 
 export async function ensureTranscriptOwnership(
