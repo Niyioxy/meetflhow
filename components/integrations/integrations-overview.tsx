@@ -92,13 +92,17 @@ export function IntegrationsOverview() {
             <CardTitle>Chrome Extension</CardTitle>
           </div>
           <CardDescription>
-            Record directly from Google Meet, Microsoft Teams, or Zoom tabs.
+            Record directly from Google Meet, Microsoft Teams, or Zoom tabs. Load the{" "}
+            <Link href="https://github.com/Niyioxy/meetflhow/tree/master/extension" target="_blank" rel="noopener noreferrer" className="underline">
+              /extension folder
+            </Link>{" "}
+            as an unpacked extension, then connect your account.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-4">
-          <Badge variant="secondary">Coming soon</Badge>
-          <Button variant="outline" disabled>
-            Get the Extension
+          <Badge>Ready</Badge>
+          <Button asChild variant="outline">
+            <Link href="/extension/auth">Connect Account</Link>
           </Button>
         </CardContent>
       </Card>

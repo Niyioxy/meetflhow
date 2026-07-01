@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MeetFlhow</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 280px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      color: #0f172a;
+      background: #fff;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #2563eb;
+      color: white;
+    }
+    .header img { width: 28px; height: 28px; border-radius: 6px; }
+    .header h1 { font-size: 15px; font-weight: 600; }
+    .body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; flex-shrink: 0;
+    }
+    .dot.connected { background: #10b981; }
+    .email { font-size: 13px; color: #475569; flex: 1; min-width: 0; overflow: hidden;
+             text-overflow: ellipsis; white-space: nowrap; }
+    .badge {
+      font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 12px;
+      background: #dbeafe; color: #1d4ed8;
+    }
+    .badge.recording { background: #fee2e2; color: #dc2626; }
+    .badge.idle { background: #f1f5f9; color: #64748b; }
+    button {
+      width: 100%; padding: 9px 14px; border-radius: 8px; border: none;
+      cursor: pointer; font-size: 13px; font-weight: 500; transition: 0.15s;
+    }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-outline {
+      background: transparent; color: #374151;
+      border: 1px solid #d1d5db;
+    }
+    .btn-outline:hover { background: #f9fafb; }
+    .btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+    .btn-danger:hover { background: #fecaca; }
+    .section-label {
+      font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .token-input {
+      width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px;
+      font-size: 12px; font-family: monospace;
+    }
+    .token-input:focus { outline: none; border-color: #2563eb; }
+    .help { font-size: 12px; color: #64748b; line-height: 1.4; }
+    .help a { color: #2563eb; text-decoration: none; }
+    .help a:hover { text-decoration: underline; }
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px;
+    }
+    .toggle {
+      position: relative; width: 36px; height: 20px; flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0; background: #cbd5e1; border-radius: 20px;
+      cursor: pointer; transition: 0.2s;
+    }
+    .toggle-slider:before {
+      content: ""; position: absolute; width: 14px; height: 14px; left: 3px; bottom: 3px;
+      background: white; border-radius: 50%; transition: 0.2s;
+    }
+    .toggle input:checked + .toggle-slider { background: #2563eb; }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(16px); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="icons/icon48.png" alt="MeetFlhow" />
+    <h1>MeetFlhow</h1>
+  </div>
+  <div class="body" id="view-auth">
+    <p class="help">
+      Connect your MeetFlhow account to start recording meetings directly from this browser.
+    </p>
+    <button class="btn-primary" id="btn-connect">Connect Account</button>
+    <div>
+      <p class="section-label" style="margin-bottom:6px">Or paste your token</p>
+      <input type="text" class="token-input" id="token-input" placeholder="Paste API token here…" />
+    </div>
+    <button class="btn-primary" id="btn-save-token">Save token</button>
+  </div>
+  <div class="body" id="view-connected" style="display:none">
+    <div class="status-row">
+      <span class="dot connected"></span>
+      <span class="email" id="lbl-email">—</span>
+      <span class="badge idle" id="lbl-status">Idle</span>
+    </div>
+    <div class="toggle-row">
+      <span>Auto-detect meeting title</span>
+      <label class="toggle">
+        <input type="checkbox" id="toggle-autodetect" checked />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <button class="btn-outline" id="btn-dashboard">Open Dashboard</button>
+    <button class="btn-danger" id="btn-disconnect">Disconnect</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+/* MeetFlhow recording overlay — injected into Google Meet, Teams, and Zoom tabs. */
+
+#meetflhow-overlay {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: grab;
+  user-select: none;
+}
+
+#meetflhow-overlay:active {
+  cursor: grabbing;
+}
+
+#meetflhow-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+#meetflhow-btn:hover {
+  background: #1d4ed8;
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.65);
+}
+
+#meetflhow-btn.recording {
+  background: #ef4444;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.5);
+  animation: meetflhow-pulse 1.5s ease infinite;
+}
+
+#meetflhow-btn.processing {
+  background: #f59e0b;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.5);
+  cursor: not-allowed;
+  animation: none;
+}
+
+#meetflhow-btn.done {
+  background: #10b981;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
+  animation: none;
+}
+
+@keyframes meetflhow-pulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: 0 4px 24px rgba(239, 68, 68, 0.9); }
+}
+
+#meetflhow-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: white;
+  pointer-events: none;
+}
+
+#meetflhow-timer {
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: none;
+  pointer-events: none;
+}
+
+#meetflhow-overlay.recording #meetflhow-timer {
+  display: block;
+}
+
+#meetflhow-status {
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: none;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+#meetflhow-overlay.processing #meetflhow-status,
+#meetflhow-overlay.done #meetflhow-status {
+  display: block;
+}
