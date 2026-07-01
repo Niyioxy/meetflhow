@@ -43,6 +43,13 @@
       "when": 1782842334590,
       "tag": "0005_bizarre_lyja",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782855338459,
+      "tag": "0006_colossal_wasp",
+      "breakpoints": true
     }
   ]
 }

@@ -116,6 +116,7 @@ export default async function MeetingDetailPage({
       {meeting.status === "ready" && (
         <ActionItemsCard
           meetingTitle={meeting.title}
+          workspaceId={meeting.workspaceId}
           initialItems={meeting.actionItems.map((item) => ({
             id: item.id,
             task: item.task,
@@ -124,6 +125,9 @@ export default async function MeetingDetailPage({
             deadline: item.deadline,
             priority: item.priority,
             status: item.status,
+            externalTicketId: item.externalTicketId,
+            externalTicketUrl: item.externalTicketUrl,
+            externalProvider: item.externalProvider,
           }))}
         />
       )}

@@ -28,8 +28,8 @@ import { PriorityBadge } from "@/components/meeting/priority-badge";
 import { actionItemsToCsv } from "@/lib/csv";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { initialsFromName, colorFromName } from "@/lib/avatar";
-import { CheckCircle2, Circle, Copy, Download, AtSign } from "lucide-react";
-import type { ActionItemStatus, Priority } from "@/db/schema";
+import { CheckCircle2, Circle, Copy, Download, AtSign, ExternalLink, Ticket, Loader2 } from "lucide-react";
+import type { ActionItemStatus, Priority, IssueTrackerProvider } from "@/db/schema";
 import type { MentionableMember } from "@/types/mentions";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +41,9 @@ export interface ActionItem {
   deadline: string | null;
   priority: Priority;
   status: ActionItemStatus;
+  externalTicketId?: string | null;
+  externalTicketUrl?: string | null;
+  externalProvider?: IssueTrackerProvider | null;
 }
 
 function AssigneeCell({
@@ -105,11 +108,48 @@ function AssigneeCell({
 export function ActionItemsCard({
   meetingTitle,
   initialItems,
+  workspaceId,
 }: {
   meetingTitle: string;
   initialItems: ActionItem[];
+  workspaceId?: string | null;
 }) {
   const [items, setItems] = useState(initialItems);
+  const [connectedProviders, setConnectedProviders] = useState<IssueTrackerProvider[]>([]);
+  const [creatingTicket, setCreatingTicket] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    fetch(`/api/integrations/issue-trackers?workspaceId=${workspaceId}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => setConnectedProviders((data.connected ?? []).map((c: { provider: IssueTrackerProvider }) => c.provider)))
+      .catch(() => {});
+  }, [workspaceId]);
+
+  async function handleCreateTicket(item: ActionItem, provider: IssueTrackerProvider) {
+    setCreatingTicket(item.id);
+    try {
+      const res = await fetch(`/api/action-items/${item.id}/create-ticket`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "Failed to create ticket");
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === item.id
+            ? { ...i, externalTicketId: data.ticketId, externalTicketUrl: data.ticketUrl, externalProvider: data.provider }
+            : i
+        )
+      );
+      toast.success(`${provider === "jira" ? "Jira" : "Linear"} ticket created: ${data.ticketId}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create ticket");
+    } finally {
+      setCreatingTicket(null);
+    }
+  }
 
   async function toggleStatus(item: ActionItem) {
     const nextStatus: ActionItemStatus = item.status === "todo" ? "done" : "todo";
@@ -209,6 +249,7 @@ export function ActionItemsCard({
               <TableHead>Owner</TableHead>
               <TableHead>Deadline</TableHead>
               <TableHead>Priority</TableHead>
+              {connectedProviders.length > 0 && <TableHead>Ticket</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -235,6 +276,60 @@ export function ActionItemsCard({
                 <TableCell>
                   <PriorityBadge priority={item.priority} />
                 </TableCell>
+                {connectedProviders.length > 0 && (
+                  <TableCell>
+                    {item.externalTicketId && item.externalTicketUrl ? (
+                      <a
+                        href={item.externalTicketUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-[var(--blue-primary)] hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        {item.externalTicketId}
+                      </a>
+                    ) : connectedProviders.length === 1 ? (
+                      <button
+                        type="button"
+                        disabled={creatingTicket === item.id}
+                        onClick={() => handleCreateTicket(item, connectedProviders[0])}
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                        title={`Create ${connectedProviders[0] === "jira" ? "Jira ticket" : "Linear issue"}`}
+                      >
+                        {creatingTicket === item.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Ticket className="h-3.5 w-3.5" />
+                        )}
+                        Create
+                      </button>
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={creatingTicket === item.id}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                          >
+                            {creatingTicket === item.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Ticket className="h-3.5 w-3.5" />
+                            )}
+                            Create
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          {connectedProviders.map((p) => (
+                            <DropdownMenuItem key={p} onClick={() => handleCreateTicket(item, p)}>
+                              {p === "jira" ? "Jira ticket" : "Linear issue"}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

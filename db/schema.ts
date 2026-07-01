@@ -335,6 +335,9 @@ export const tasks = pgTable("tasks", {
   status: text("status").$type<TaskStatus>().notNull().default("backlog"),
   dueDate: timestamp("due_date"),
   assignedTo: text("assigned_to"),
+  externalTicketId: text("external_ticket_id"),
+  externalTicketUrl: text("external_ticket_url"),
+  externalProvider: text("external_provider").$type<IssueTrackerProvider>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

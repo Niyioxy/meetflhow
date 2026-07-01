@@ -32,6 +32,9 @@ export default async function TasksPage() {
           dueDate: t.dueDate ? t.dueDate.toISOString() : null,
           assignedTo: t.assignedTo,
           meetingId: t.meetingId,
+          externalTicketId: t.externalTicketId,
+          externalTicketUrl: t.externalTicketUrl,
+          externalProvider: t.externalProvider,
         }))}
         meetings={meetingRows.map((m) => ({ id: m.id, title: m.title }))}
       />

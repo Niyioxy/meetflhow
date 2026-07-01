@@ -14,6 +14,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -21,11 +22,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
 import { NewTaskDialog } from "@/components/tasks/new-task-dialog";
 import { cn } from "@/lib/utils";
-import type { Priority, TaskStatus } from "@/db/schema";
+import { ExternalLink, Loader2, Ticket } from "lucide-react";
+import { useWorkspace } from "@/components/providers/workspace-provider";
+import type { Priority, TaskStatus, IssueTrackerProvider } from "@/db/schema";
 
 export interface TaskRow {
   id: string;
@@ -36,6 +45,9 @@ export interface TaskRow {
   dueDate: string | null;
   assignedTo: string | null;
   meetingId: string | null;
+  externalTicketId?: string | null;
+  externalTicketUrl?: string | null;
+  externalProvider?: IssueTrackerProvider | null;
 }
 
 export interface MeetingOption {
@@ -57,10 +69,22 @@ export function TaskBoard({
   initialTasks: TaskRow[];
   meetings: MeetingOption[];
 }) {
+  const { activeWorkspaceId } = useWorkspace();
   const [tasks, setTasks] = useState(initialTasks);
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [meetingFilter, setMeetingFilter] = useState("all");
   const [dueDateFilter, setDueDateFilter] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [connectedProviders, setConnectedProviders] = useState<IssueTrackerProvider[]>([]);
+  const [bulkCreating, setBulkCreating] = useState(false);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+    fetch(`/api/integrations/issue-trackers?workspaceId=${activeWorkspaceId}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => setConnectedProviders((data.connected ?? []).map((c: { provider: IssueTrackerProvider }) => c.provider)))
+      .catch(() => {});
+  }, [activeWorkspaceId]);
 
   const meetingTitleById = useMemo(
     () => new Map(meetings.map((m) => [m.id, m.title])),
@@ -107,6 +131,39 @@ export function TaskBoard({
   }
 
   const hasFilters = priorityFilter !== "all" || meetingFilter !== "all" || Boolean(dueDateFilter);
+
+  async function handleBulkCreateTickets(provider: IssueTrackerProvider) {
+    const ids = Array.from(selectedIds);
+    setBulkCreating(true);
+    let succeeded = 0;
+    await Promise.all(
+      ids.map(async (taskId) => {
+        try {
+          const res = await fetch(`/api/tasks/${taskId}/create-ticket`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ provider }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok) throw new Error(data?.error ?? "Failed");
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId
+                ? { ...t, externalTicketId: data.ticketId, externalTicketUrl: data.ticketUrl, externalProvider: data.provider }
+                : t
+            )
+          );
+          succeeded++;
+        } catch {
+          /* individual failures logged silently; final toast shows count */
+        }
+      })
+    );
+    setBulkCreating(false);
+    setSelectedIds(new Set());
+    if (succeeded > 0) toast.success(`Created ${succeeded} ticket${succeeded !== 1 ? "s" : ""}`);
+    if (succeeded < ids.length) toast.error(`${ids.length - succeeded} ticket(s) failed`);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -159,6 +216,35 @@ export function TaskBoard({
         )}
 
         <div className="flex-1" />
+        {selectedIds.size > 0 && connectedProviders.length > 0 && (
+          connectedProviders.length === 1 ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkCreating}
+              onClick={() => handleBulkCreateTickets(connectedProviders[0])}
+            >
+              {bulkCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ticket className="mr-2 h-4 w-4" />}
+              Create tickets for {selectedIds.size} selected
+            </Button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" disabled={bulkCreating}>
+                  {bulkCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ticket className="mr-2 h-4 w-4" />}
+                  Create tickets for {selectedIds.size} selected
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {connectedProviders.map((p) => (
+                  <DropdownMenuItem key={p} onClick={() => handleBulkCreateTickets(p)}>
+                    {p === "jira" ? "Create Jira tickets" : "Create Linear issues"}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
+        )}
         <NewTaskDialog meetings={meetings} onCreated={(task) => setTasks((prev) => [task, ...prev])} />
       </div>
 
@@ -172,6 +258,15 @@ export function TaskBoard({
               borderColor={col.borderColor}
               tasks={tasks.filter((t) => t.status === col.id)}
               meetingTitleById={meetingTitleById}
+              selectedIds={selectedIds}
+              onToggleSelect={(id) =>
+                setSelectedIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(id)) next.delete(id); else next.add(id);
+                  return next;
+                })
+              }
+              showTickets={connectedProviders.length > 0}
               style={{ animationDelay: `${i * 50}ms` }}
             />
           ))}
@@ -187,6 +282,9 @@ function TaskColumn({
   borderColor,
   tasks,
   meetingTitleById,
+  selectedIds,
+  onToggleSelect,
+  showTickets,
   style,
 }: {
   id: TaskStatus;
@@ -194,6 +292,9 @@ function TaskColumn({
   borderColor: string;
   tasks: TaskRow[];
   meetingTitleById: Map<string, string>;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+  showTickets: boolean;
   style?: React.CSSProperties;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -222,6 +323,9 @@ function TaskColumn({
               key={task.id}
               task={task}
               meetingTitle={task.meetingId ? meetingTitleById.get(task.meetingId) : undefined}
+              selected={selectedIds.has(task.id)}
+              onToggleSelect={() => onToggleSelect(task.id)}
+              showTickets={showTickets}
             />
           ))
         )}
@@ -230,7 +334,19 @@ function TaskColumn({
   );
 }
 
-function TaskCard({ task, meetingTitle }: { task: TaskRow; meetingTitle?: string }) {
+function TaskCard({
+  task,
+  meetingTitle,
+  selected,
+  onToggleSelect,
+  showTickets,
+}: {
+  task: TaskRow;
+  meetingTitle?: string;
+  selected: boolean;
+  onToggleSelect: () => void;
+  showTickets: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
   });
@@ -244,12 +360,23 @@ function TaskCard({ task, meetingTitle }: { task: TaskRow; meetingTitle?: string
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
-      className="flex cursor-grab flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-card p-3 text-sm shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-light)] active:cursor-grabbing"
+      className={cn(
+        "flex cursor-grab flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-card p-3 text-sm shadow-[var(--shadow-card)] transition-colors hover:border-[var(--border-light)] active:cursor-grabbing",
+        selected && "ring-2 ring-primary/50"
+      )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="font-medium leading-tight">{task.title}</p>
+      <div className="flex items-start justify-between gap-2" {...listeners} {...attributes}>
+        <div className="flex items-start gap-2">
+          {showTickets && (
+            <Checkbox
+              checked={selected}
+              onCheckedChange={onToggleSelect}
+              onClick={(e) => e.stopPropagation()}
+              className="mt-0.5 shrink-0"
+            />
+          )}
+          <p className="font-medium leading-tight">{task.title}</p>
+        </div>
         <TaskPriorityBadge priority={task.priority} />
       </div>
       {task.description && (
@@ -259,6 +386,18 @@ function TaskCard({ task, meetingTitle }: { task: TaskRow; meetingTitle?: string
         {task.dueDate && <span>{format(new Date(task.dueDate), "MMM d")}</span>}
         {task.assignedTo && <span>· {task.assignedTo}</span>}
         {meetingTitle && <span className="truncate">· {meetingTitle}</span>}
+        {task.externalTicketId && task.externalTicketUrl && (
+          <a
+            href={task.externalTicketUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-[var(--blue-primary)] hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="h-3 w-3" />
+            {task.externalTicketId}
+          </a>
+        )}
       </div>
     </div>
   );
