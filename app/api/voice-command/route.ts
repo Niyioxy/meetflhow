@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getMobileUser } from "@/lib/mobile-auth";
-import { createClient } from "@deepgram/sdk";
+import { DeepgramClient } from "@deepgram/sdk";
 
 const WAKE_PHRASE = "hey meetflhow";
 
@@ -31,7 +31,6 @@ export async function POST(request: Request) {
 
   const formData = await request.formData();
   const audio = formData.get("audio");
-  const duration = Number(formData.get("duration") ?? 0);
 
   if (!audio || !(audio instanceof Blob)) {
     return NextResponse.json({ command: null, confidence: 0 });
@@ -43,7 +42,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const deepgram = createClient(apiKey);
+    const deepgram = new DeepgramClient({ apiKey });
     const arrayBuffer = await audio.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
