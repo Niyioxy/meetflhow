@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getMobileUser } from "@/lib/mobile-auth";
-import { DeepgramClient } from "@deepgram/sdk";
+import { deepgram } from "@/lib/deepgram/client";
 
 const WAKE_PHRASE = "hey meetflhow";
 
@@ -36,24 +36,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ command: null, confidence: 0 });
   }
 
-  const apiKey = process.env.DEEPGRAM_API_KEY;
-  if (!apiKey) {
+  if (!process.env.DEEPGRAM_API_KEY) {
     return NextResponse.json({ command: null, confidence: 0, error: "Deepgram not configured" });
   }
 
   try {
-    const deepgram = new DeepgramClient({ apiKey });
     const arrayBuffer = await audio.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const file = new File([arrayBuffer], "clip.m4a", { type: "audio/m4a" });
 
-    const { result } = await deepgram.listen.prerecorded.transcribeFile(buffer, {
-      model: "nova-2",
-      language: "en",
+    const response = await deepgram.listen.v1.media.transcribeFile(file, {
+      model: "nova-3",
       smart_format: false,
     });
 
     const transcript =
-      result?.results?.channels?.[0]?.alternatives?.[0]?.transcript?.toLowerCase() ?? "";
+      "results" in response
+        ? (response.results?.channels?.[0]?.alternatives?.[0]?.transcript?.toLowerCase() ?? "")
+        : "";
 
     if (!transcript.includes(WAKE_PHRASE)) {
       return NextResponse.json({ command: null, confidence: 0, transcript });
