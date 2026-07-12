@@ -32,7 +32,15 @@ export function IntegrationsOverview() {
       .catch(() => setWebhooks(null));
   }, [activeWorkspaceId]);
 
-  if (!workspaceLoading && !activeWorkspaceId) {
+  if (workspaceLoading) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-sm text-muted-foreground">Loading…</CardContent>
+      </Card>
+    );
+  }
+
+  if (!activeWorkspaceId) {
     return (
       <Card>
         <CardContent className="py-8 text-sm text-muted-foreground">
