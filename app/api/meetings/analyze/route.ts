@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { meetings, transcripts } from "@/db/schema";
+import { meetings, transcripts, contentTypeEnum } from "@/db/schema";
 import { runAllMeetingAnalyses, wordCount } from "@/lib/meetings";
 import { getWorkspaceMember } from "@/lib/workspace-auth";
 import { z } from "zod";
@@ -13,6 +13,7 @@ const bodySchema = z.object({
   meetingId: z.string().uuid().optional(),
   title: z.string().optional(),
   platform: z.string().optional(),
+  contentType: z.enum(contentTypeEnum).optional(),
   transcriptText: z.string().min(1).optional(),
   workspaceId: z.string().uuid().nullable().optional(),
   sharedWithWorkspace: z.boolean().optional(),
@@ -30,7 +31,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { meetingId, title, platform, transcriptText, workspaceId, sharedWithWorkspace } = parsed.data;
+  const { meetingId, title, platform, contentType, transcriptText, workspaceId, sharedWithWorkspace } =
+    parsed.data;
   const userId = session.user.id;
 
   if (workspaceId) {
@@ -76,6 +78,7 @@ export async function POST(req: Request) {
         userId,
         title: title?.trim() || "Pasted transcript",
         platform: platform || "other",
+        contentType: contentType ?? "meeting",
         status: "transcribing",
         workspaceId: workspaceId ?? null,
         sharedWithWorkspace: workspaceId ? Boolean(sharedWithWorkspace) : false,

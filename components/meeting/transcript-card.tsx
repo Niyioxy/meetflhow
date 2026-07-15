@@ -2,9 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, MessageSquare } from "lucide-react";
+import { Loader2, MessageSquare, Check, HelpCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { initialsFromName, colorFromName } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import { CommentThreadPanel } from "@/components/meeting/comment-thread-panel";
@@ -13,6 +19,11 @@ import type { TranscriptCommentView } from "@/types/comments";
 
 type ViewMode = "speaker" | "full";
 
+// Mirrors CONFIDENT_THRESHOLD in lib/voice-identification.ts — kept as a
+// plain constant here (not imported) since that module pulls in server-only
+// DB/ffmpeg code that must not reach the client bundle.
+const CONFIDENT_THRESHOLD = 0.65;
+
 export function TranscriptCard({
   meetingId,
   fullText,
@@ -20,6 +31,7 @@ export function TranscriptCard({
   language,
   initialSegments,
   workspaceId = null,
+  candidateNames = [],
 }: {
   meetingId: string;
   fullText: string;
@@ -27,6 +39,7 @@ export function TranscriptCard({
   language: string | null;
   initialSegments: SpeakerSegment[] | null;
   workspaceId?: string | null;
+  candidateNames?: string[];
 }) {
   const [segments, setSegments] = useState(initialSegments);
   const [loadingSegments, setLoadingSegments] = useState(!initialSegments);
@@ -99,6 +112,22 @@ export function TranscriptCard({
       await refreshComments();
     } catch {
       toast.error("Failed to update comment");
+    }
+  }
+
+  async function handleReassignSpeaker(oldSpeaker: string, newName: string) {
+    if (!newName.trim() || newName === oldSpeaker) return;
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}/speaker-name`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ oldSpeaker, newName }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setSegments(data.speakerSegments);
+    } catch {
+      toast.error("Failed to reassign speaker");
     }
   }
 
@@ -217,14 +246,61 @@ export function TranscriptCard({
                   )}
                 >
                   <div
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white",
+                      seg.identificationMethod !== "voice_match" &&
+                        seg.identificationMethod !== "manual" &&
+                        "border-2 border-dashed border-white/60"
+                    )}
                     style={{ backgroundColor: colorFromName(seg.speaker) }}
                   >
                     {initialsFromName(seg.speaker)}
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold">{seg.speaker}</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button type="button" className="text-sm font-bold hover:underline">
+                            {seg.speaker}
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {candidateNames
+                            .filter((name) => name !== seg.speaker)
+                            .map((name) => (
+                              <DropdownMenuItem
+                                key={name}
+                                onClick={() => handleReassignSpeaker(seg.speaker, name)}
+                              >
+                                {name}
+                              </DropdownMenuItem>
+                            ))}
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const name = window.prompt("Speaker name", seg.speaker);
+                              if (name) handleReassignSpeaker(seg.speaker, name);
+                            }}
+                          >
+                            Other...
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {seg.identificationMethod === "voice_match" &&
+                      (seg.confidence ?? 0) > CONFIDENT_THRESHOLD ? (
+                        <span title="Identified by voice">
+                          <Check className="h-3.5 w-3.5 text-[#10B981]" />
+                        </span>
+                      ) : seg.identificationMethod !== "manual" ? (
+                        <span
+                          title={
+                            seg.identificationMethod === "voice_match"
+                              ? "Possible voice match — click name to confirm"
+                              : "AI guess — click name to correct"
+                          }
+                        >
+                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                        </span>
+                      ) : null}
                       <span className="text-xs text-muted-foreground">{seg.timestamp_approx}</span>
                     </div>
                     <p className="text-sm leading-relaxed">{seg.text}</p>

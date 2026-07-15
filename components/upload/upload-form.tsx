@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { FileDropzone } from "@/components/upload/file-dropzone";
 import { PlatformSelect } from "@/components/upload/platform-select";
+import { ContentTypeSelect } from "@/components/upload/content-type-select";
 import { Loader2, Sparkles } from "lucide-react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Switch } from "@/components/ui/switch";
@@ -42,11 +43,13 @@ export function UploadForm() {
   const [file, setFile] = useState<File | null>(null);
   const [fileTitle, setFileTitle] = useState("");
   const [filePlatform, setFilePlatform] = useState("other");
+  const [fileContentType, setFileContentType] = useState("meeting");
   const [fileShared, setFileShared] = useState(false);
   const [fileSubmitting, setFileSubmitting] = useState(false);
 
   const [pastedTitle, setPastedTitle] = useState("");
   const [pastedPlatform, setPastedPlatform] = useState("other");
+  const [pastedContentType, setPastedContentType] = useState("meeting");
   const [pasteShared, setPasteShared] = useState(false);
   const [transcriptText, setTranscriptText] = useState("");
   const [pasteSubmitting, setPasteSubmitting] = useState(false);
@@ -62,6 +65,7 @@ export function UploadForm() {
       formData.append("file", file);
       formData.append("title", fileTitle || file.name);
       formData.append("platform", filePlatform);
+      formData.append("contentType", fileContentType);
       if (activeWorkspaceId) {
         formData.append("workspaceId", activeWorkspaceId);
         formData.append("sharedWithWorkspace", String(fileShared));
@@ -99,6 +103,7 @@ export function UploadForm() {
         body: JSON.stringify({
           title: pastedTitle,
           platform: pastedPlatform,
+          contentType: pastedContentType,
           transcriptText,
           ...(activeWorkspaceId
             ? { workspaceId: activeWorkspaceId, sharedWithWorkspace: pasteShared }
@@ -138,7 +143,7 @@ export function UploadForm() {
           <CardContent className="flex flex-col gap-4">
             <FileDropzone file={file} onFileSelected={setFile} />
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="file-title">Title</Label>
                 <Input
@@ -151,6 +156,10 @@ export function UploadForm() {
               <div className="flex flex-col gap-2">
                 <Label>Platform</Label>
                 <PlatformSelect value={filePlatform} onChange={setFilePlatform} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>Content type</Label>
+                <ContentTypeSelect value={fileContentType} onChange={setFileContentType} />
               </div>
             </div>
 
@@ -182,7 +191,7 @@ export function UploadForm() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="paste-title">Title</Label>
                 <Input
@@ -195,6 +204,10 @@ export function UploadForm() {
               <div className="flex flex-col gap-2">
                 <Label>Platform</Label>
                 <PlatformSelect value={pastedPlatform} onChange={setPastedPlatform} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>Content type</Label>
+                <ContentTypeSelect value={pastedContentType} onChange={setPastedContentType} />
               </div>
             </div>
 

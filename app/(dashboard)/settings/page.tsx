@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { auth, signOut } from "@/auth";
 import { isCalendarConnected } from "@/lib/google/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -6,22 +7,24 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConnectGoogleButton } from "@/components/settings/connect-google-button";
+import { VoiceProfileCard } from "@/components/settings/voice-profile-card";
 
 export default async function SettingsPage() {
   const session = await auth();
   const user = session!.user;
   const connected = await isCalendarConnected(user.id);
+  const t = await getTranslations("settings");
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">Manage your account and integrations.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
+          <CardTitle>{t("profile")}</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center gap-4">
           <Avatar className="h-12 w-12">
@@ -37,46 +40,46 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Workspace</CardTitle>
-          <CardDescription>Manage members, roles, and invites for your workspace.</CardDescription>
+          <CardTitle>{t("workspace")}</CardTitle>
+          <CardDescription>{t("workspaceDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="outline" asChild>
-            <Link href="/settings/workspace">Manage Workspace</Link>
+            <Link href="/settings/workspace">{t("manageWorkspace")}</Link>
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Integrations</CardTitle>
-          <CardDescription>Connect Slack, Notion, Jira, Linear, webhooks, and the Chrome extension.</CardDescription>
+          <CardTitle>{t("integrations")}</CardTitle>
+          <CardDescription>{t("integrationsDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="outline" asChild>
-            <Link href="/settings/integrations">Manage Integrations</Link>
+            <Link href="/settings/integrations">{t("manageIntegrations")}</Link>
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Google Calendar</CardTitle>
-          <CardDescription>
-            Connect your Google account to sync scheduled meetings and auto-generate Google Meet links.
-          </CardDescription>
+          <CardTitle>{t("googleCalendar")}</CardTitle>
+          <CardDescription>{t("googleCalendarDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-4">
           <Badge variant={connected ? "default" : "secondary"}>
-            {connected ? "Connected" : "Not connected"}
+            {connected ? t("connected") : t("notConnected")}
           </Badge>
           <ConnectGoogleButton connected={connected} />
         </CardContent>
       </Card>
 
+      <VoiceProfileCard userId={user.id} />
+
       <Card>
         <CardHeader>
-          <CardTitle>Account</CardTitle>
+          <CardTitle>{t("account")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form
@@ -86,7 +89,7 @@ export default async function SettingsPage() {
             }}
           >
             <Button variant="outline" type="submit">
-              Sign out
+              {t("signOut")}
             </Button>
           </form>
         </CardContent>

@@ -1,0 +1,78 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "signOut": "Sign out",
+    "original": "Original",
+    "translatedNotice": "Translated by MeetFlhow AI — may contain errors"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "meetings": "Meetings",
+    "calendar": "Calendar",
+    "insights": "Insights",
+    "tasks": "Tasks",
+    "todos": "Todos",
+    "team": "Team",
+    "settings": "Settings"
+  },
+  "topbar": {
+    "language": "Language"
+  },
+  "login": {
+    "tagline": "Turn your meetings into summaries, action items, and decisions — automatically.",
+    "continueWithGoogle": "Continue with Google"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account and integrations.",
+    "profile": "Profile",
+    "workspace": "Workspace",
+    "workspaceDescription": "Manage members, roles, and invites for your workspace.",
+    "manageWorkspace": "Manage Workspace",
+    "integrations": "Integrations",
+    "integrationsDescription": "Connect Slack, Notion, Jira, Linear, webhooks, and the Chrome extension.",
+    "manageIntegrations": "Manage Integrations",
+    "googleCalendar": "Google Calendar",
+    "googleCalendarDescription": "Connect your Google account to sync scheduled meetings and auto-generate Google Meet links.",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "account": "Account",
+    "signOut": "Sign out"
+  },
+  "meetingDetail": {
+    "keyDecisions": "Key decisions",
+    "keyTakeaways": "Key takeaways",
+    "openQuestions": "Open questions",
+    "summary": "Summary",
+    "actionItems": "Action items",
+    "transcript": "Transcript",
+    "processingError": "Something went wrong while processing this meeting. Try uploading it again.",
+    "translate": "Translate",
+    "translating": "Translating...",
+    "translatedNotice": "Translated by MeetFlhow AI — may contain errors"
+  },
+  "followUpEmail": {
+    "button": "Send Follow-up Email",
+    "title": "Follow-up email",
+    "description": "Review and edit before sending.",
+    "recipients": "Recipients",
+    "subject": "Subject",
+    "body": "Body (HTML)",
+    "language": "Email language",
+    "drafting": "Drafting email...",
+    "scheduleTomorrow": "Schedule for tomorrow 9am",
+    "sendNow": "Send Now",
+    "recipientsPlaceholder": "alex@example.com, sam@example.com",
+    "errorDraft": "Failed to draft follow-up email",
+    "errorRecipients": "Add at least one recipient",
+    "errorSend": "Failed to send email",
+    "errorGeneric": "Something went wrong",
+    "successNow": "Follow-up sent to {count, plural, one {# attendee} other {# attendees}} ✓",
+    "successScheduled": "Follow-up scheduled for tomorrow 9am ✓"
+  }
+}

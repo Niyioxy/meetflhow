@@ -32,12 +32,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   pages: {
     signIn: "/login",
+    newUser: "/onboarding/voice",
   },
   callbacks: {
     session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
         session.user.role = (user as { role?: UserRole }).role ?? "member";
+        session.user.language = (user as { language?: string }).language ?? "en";
       }
       return session;
     },

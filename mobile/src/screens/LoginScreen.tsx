@@ -1,25 +1,32 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { makeRedirectUri } from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
-import Constants from "expo-constants";
 import { loginWithGoogleToken } from "@/lib/auth";
 import { useAuthStore } from "@/store/authStore";
 
 WebBrowser.maybeCompleteAuthSession();
 
+const IS_DEV = __DEV__;
+
 export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const { setUser } = useAuthStore();
 
+  const redirectUri = makeRedirectUri({
+    native: "com.meetflhow.app://oauth2redirect",
+  });
+
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: Constants.expoConfig?.extra?.googleClientId,
-    iosClientId: Constants.expoConfig?.extra?.googleIosClientId,
-    androidClientId: Constants.expoConfig?.extra?.googleAndroidClientId,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    redirectUri,
   });
 
   React.useEffect(() => {
+    console.log("Redirect URI:", redirectUri);
     if (response?.type === "success" && response.authentication?.idToken) {
       handleGoogleLogin(response.authentication.idToken);
     } else if (response?.type === "success" && response.authentication?.accessToken) {
@@ -37,6 +44,16 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleDevBypass() {
+    setUser({
+      id: "dev-user",
+      name: "Dev User",
+      email: "dev@meetflhow.com",
+      image: null,
+      role: "user",
+    });
   }
 
   return (
@@ -59,11 +76,19 @@ export default function LoginScreen() {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <>
-              <Text className="text-white font-semibold text-base">Sign in with Google</Text>
-            </>
+            <Text className="text-white font-semibold text-base">Sign in with Google</Text>
           )}
         </TouchableOpacity>
+
+        {IS_DEV && (
+          <TouchableOpacity
+            onPress={handleDevBypass}
+            className="w-full border border-[#1E293B] rounded-xl py-4 items-center"
+            activeOpacity={0.7}
+          >
+            <Text className="text-slate-500 text-sm">Skip sign in (dev only)</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <Text className="text-slate-600 text-xs mt-12 text-center">

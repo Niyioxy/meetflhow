@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+node_modules/
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -37,3 +38,8 @@ next-env.d.ts
 
 .vercel
 .env*
+.expo/
+
+# expo prebuild output (regenerated locally / by EAS Build, not tracked)
+mobile/android/
+mobile/ios/

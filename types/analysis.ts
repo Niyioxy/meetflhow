@@ -32,10 +32,15 @@ export interface SentimentTimeline {
   most_tense_moment: string;
 }
 
+export type SpeakerIdentificationMethod = "voice_match" | "ai_inference" | "manual";
+
 export interface SpeakerSegment {
   speaker: string;
   text: string;
   timestamp_approx: string;
+  identificationMethod?: SpeakerIdentificationMethod;
+  matchedUserId?: string | null;
+  confidence?: number | null;
 }
 
 export type AgendaItemType = "update" | "discussion" | "decision" | "action_review";

@@ -1,8 +1,7 @@
-import React from "react";
-import { View, Text, TouchableOpacity, TextInput, ScrollView } from "react-native";
+import React, { useRef, useEffect } from "react";
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated";
 import { useRecordingStore } from "@/store/recordingStore";
 import { useRecording } from "@/hooks/useRecording";
 import AudioWaveform from "@/components/AudioWaveform";
@@ -21,24 +20,26 @@ export default function RecordScreen() {
   const store = useRecordingStore();
   const { startRecording, pauseRecording, resumeRecording, stopRecording } = useRecording();
 
-  const pulseScale = useSharedValue(1);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseOpacity = useRef(new Animated.Value(0)).current;
+  const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (store.status === "recording") {
-      pulseScale.value = withRepeat(
-        withTiming(1.15, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true
+      pulseOpacity.setValue(0.35);
+      pulseLoop.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.15, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        ])
       );
+      pulseLoop.current.start();
     } else {
-      pulseScale.value = withTiming(1);
+      pulseLoop.current?.stop();
+      pulseAnim.setValue(1);
+      pulseOpacity.setValue(0);
     }
   }, [store.status]);
-
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulseScale.value }],
-    opacity: store.status === "recording" ? 0.35 : 0,
-  }));
 
   const isIdle = store.status === "idle";
   const isRecording = store.status === "recording";
@@ -68,16 +69,15 @@ export default function RecordScreen() {
 
         <View className="items-center justify-center mb-10" style={{ width: 180, height: 180 }}>
           <Animated.View
-            style={[
-              pulseStyle,
-              {
-                position: "absolute",
-                width: 180,
-                height: 180,
-                borderRadius: 90,
-                backgroundColor: "#DC2626",
-              },
-            ]}
+            style={{
+              position: "absolute",
+              width: 180,
+              height: 180,
+              borderRadius: 90,
+              backgroundColor: "#DC2626",
+              opacity: pulseOpacity,
+              transform: [{ scale: pulseAnim }],
+            }}
           />
           <TouchableOpacity
             onPress={isIdle ? startRecording : isRecording ? pauseRecording : isPaused ? resumeRecording : undefined}

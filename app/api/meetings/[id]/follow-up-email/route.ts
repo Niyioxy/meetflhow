@@ -3,9 +3,17 @@ import { auth } from "@/auth";
 import { format } from "date-fns";
 import { getMeetingDetail } from "@/lib/meetings";
 import { generateFollowUpEmail } from "@/lib/gemini/follow-up-email";
+import { supportedLanguageEnum, type SupportedLanguage } from "@/db/schema";
+
+function parseLanguage(value: unknown): SupportedLanguage | undefined {
+  return typeof value === "string" &&
+    (supportedLanguageEnum as readonly string[]).includes(value)
+    ? (value as SupportedLanguage)
+    : undefined;
+}
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } }
 ) {
   const session = await auth();
@@ -24,6 +32,9 @@ export async function POST(
     );
   }
 
+  const body = await req.json().catch(() => null);
+  const language = parseLanguage(body?.language);
+
   try {
     const email = await generateFollowUpEmail({
       title: meeting.title,
@@ -35,6 +46,7 @@ export async function POST(
         owner: item.owner,
         deadline: item.deadline,
       })),
+      language,
     });
 
     return NextResponse.json({

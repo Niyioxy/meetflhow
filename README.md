@@ -46,6 +46,37 @@ Next.js 14 (App Router) · Neon Postgres · Drizzle ORM · NextAuth.js (Auth.js 
    npm run dev
    ```
 
+## Voice recognition service
+
+Speaker voice recognition (enrolment + identification) runs through a
+self-hosted Python microservice at [`voice-service/`](voice-service) using
+SpeechBrain's ECAPA-TDNN speaker embedding model — no API keys or usage
+limits. It must be running alongside the Next.js app in dev for voice
+enrolment/identification to work; without it, those features fail closed
+(the app still works, meetings just fall back to Gemini's speaker guesses).
+
+Set up once:
+
+```bash
+cd voice-service
+python -m venv .venv
+.venv\Scripts\activate   # or `source .venv/bin/activate` on macOS/Linux
+pip install -r requirements.txt
+```
+
+Requires the `ffmpeg` binary on your `PATH` (used to normalize uploaded audio
+before embedding).
+
+Then, side by side with `npm run dev`, run:
+
+```bash
+npm run voice-service
+```
+
+which starts `uvicorn main:app --port 8001 --reload`. Set
+`VOICE_SERVICE_URL` in `.env.local` (defaults to `http://localhost:8001`,
+see `.env.example`) so the Next.js app knows where to reach it.
+
 ## Notes
 
 - The Deepgram and Gemini calls in `/api/meetings/upload` and `/api/meetings/analyze` can take a while for long meetings — both routes are configured with `maxDuration = 300`. On Vercel, this requires a plan that supports extended function durations.

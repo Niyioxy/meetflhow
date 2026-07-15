@@ -1,4 +1,3 @@
-import "./global.css";
 import React, { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -10,6 +9,8 @@ import RootNavigator from "@/navigation/RootNavigator";
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
@@ -30,7 +31,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <StatusBar style="light" backgroundColor="#0A0F1E" />
+          <StatusBar style="light" />
           <RootNavigator />
         </QueryClientProvider>
       </SafeAreaProvider>

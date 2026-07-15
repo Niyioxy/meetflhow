@@ -2,6 +2,8 @@
   "expo": {
     "name": "MeetFlhow",
     "slug": "meetflhow",
+    "owner": "niyioxy",
+    "scheme": "meetflhow",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,18 +13,30 @@
       "resizeMode": "contain",
       "backgroundColor": "#0A0F1E"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.meetflhow.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "MeetFlhow needs microphone access to record meetings",
         "NSSpeechRecognitionUsageDescription": "MeetFlhow uses speech recognition for voice commands",
-        "UIBackgroundModes": ["audio", "fetch"]
+        "UIBackgroundModes": [
+          "audio",
+          "fetch"
+        ]
       }
     },
     "android": {
       "package": "com.meetflhow.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [{ "scheme": "com.meetflhow.app", "host": "oauth2redirect" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0F1E"
@@ -32,11 +46,20 @@
         "INTERNET",
         "FOREGROUND_SERVICE",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "googleClientId": "837008785051-ddahv7kook9blsif2u2pa4m64lbdo9fb.apps.googleusercontent.com",
+      "googleAndroidClientId": "837008785051-d2065i04dpucdh79ujgbp34au8o5dq98.apps.googleusercontent.com",
+      "eas": {
+        "projectId": "b5354678-600d-4285-b4b6-040ae8496527"
+      }
     },
     "plugins": [
       "expo-secure-store",
@@ -47,7 +70,8 @@
           "icon": "./assets/notification-icon.png",
           "color": "#2563EB"
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

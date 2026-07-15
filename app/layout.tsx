@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
@@ -26,16 +28,21 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" className={cn("dark font-sans", inter.variable)}>
+    <html lang={locale} className={cn("dark font-sans", inter.variable)}>
       <body className="antialiased bg-background text-foreground">
-        <AuthSessionProvider>{children}</AuthSessionProvider>
-        <Toaster richColors position="top-right" theme="dark" />
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <AuthSessionProvider>{children}</AuthSessionProvider>
+          <Toaster richColors position="top-right" theme="dark" />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

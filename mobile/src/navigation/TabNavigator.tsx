@@ -3,12 +3,12 @@ import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import { Ionicons } from "@expo/vector-icons";
-import HomeScreen from "@/app/HomeScreen";
-import MeetingsScreen from "@/app/MeetingsScreen";
-import MeetingDetailScreen from "@/app/MeetingDetailScreen";
-import RecordScreen from "@/app/RecordScreen";
-import TasksScreen from "@/app/TasksScreen";
-import SettingsScreen from "@/app/SettingsScreen";
+import HomeScreen from "@/screens/HomeScreen";
+import MeetingsScreen from "@/screens/MeetingsScreen";
+import MeetingDetailScreen from "@/screens/MeetingDetailScreen";
+import RecordScreen from "@/screens/RecordScreen";
+import TasksScreen from "@/screens/TasksScreen";
+import SettingsScreen from "@/screens/SettingsScreen";
 import type { TabParamList, HomeStackParamList, MeetingsStackParamList } from "@/types";
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -112,7 +112,7 @@ export default function TabNavigator() {
         component={RecordScreen}
         options={{
           tabBarLabel: "",
-          tabBarButton: (props) => <RecordTabButton onPress={props.onPress ?? undefined} />,
+          tabBarButton: (props) => <RecordTabButton onPress={props.onPress ? () => props.onPress!({} as any) : undefined} />,
         }}
       />
       <Tab.Screen

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback } from "react";
 import { Audio } from "expo-av";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { Alert } from "react-native";
 import { useRecordingStore } from "@/store/recordingStore";
 import { isOnline, saveOfflineRecording } from "@/lib/offline";
@@ -96,13 +96,6 @@ export function useRecording() {
         const audioData = await FileSystem.readAsStringAsync(uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
-        const blob = await fetch(`data:audio/m4a;base64,${audioData}`).then((r) => r.blob());
-
-        const formData = new FormData();
-        formData.append("file", blob as unknown as string, `${Date.now()}.m4a`);
-        formData.append("title", title);
-        formData.append("platform", store.platform);
-
         await api.sync([{ id: Date.now().toString(), title, platform: store.platform, recorded_at: new Date().toISOString(), duration: durationSec, audio_base64: audioData }]);
         await FileSystem.deleteAsync(uri, { idempotent: true });
       } catch {

@@ -1,0 +1,78 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "signOut": "退出登录",
+    "original": "原文",
+    "translatedNotice": "由 MeetFlhow AI 翻译 — 可能包含错误"
+  },
+  "nav": {
+    "dashboard": "仪表盘",
+    "meetings": "会议",
+    "calendar": "日历",
+    "insights": "洞察",
+    "tasks": "任务",
+    "todos": "待办事项",
+    "team": "团队",
+    "settings": "设置"
+  },
+  "topbar": {
+    "language": "语言"
+  },
+  "login": {
+    "tagline": "自动将您的会议转化为摘要、行动项和决策。",
+    "continueWithGoogle": "使用 Google 继续"
+  },
+  "settings": {
+    "title": "设置",
+    "subtitle": "管理您的帐户和集成。",
+    "profile": "个人资料",
+    "workspace": "工作区",
+    "workspaceDescription": "管理您工作区的成员、角色和邀请。",
+    "manageWorkspace": "管理工作区",
+    "integrations": "集成",
+    "integrationsDescription": "连接 Slack、Notion、Jira、Linear、Webhook 和 Chrome 扩展程序。",
+    "manageIntegrations": "管理集成",
+    "googleCalendar": "Google 日历",
+    "googleCalendarDescription": "连接您的 Google 帐户以同步已安排的会议并自动生成 Google Meet 链接。",
+    "connected": "已连接",
+    "notConnected": "未连接",
+    "account": "账户",
+    "signOut": "退出登录"
+  },
+  "meetingDetail": {
+    "keyDecisions": "关键决策",
+    "keyTakeaways": "要点",
+    "openQuestions": "待解决问题",
+    "summary": "摘要",
+    "actionItems": "行动项",
+    "transcript": "转录文本",
+    "processingError": "处理此会议时出错。请重新上传。",
+    "translate": "翻译",
+    "translating": "翻译中...",
+    "translatedNotice": "由 MeetFlhow AI 翻译 — 可能包含错误"
+  },
+  "followUpEmail": {
+    "button": "发送跟进邮件",
+    "title": "跟进邮件",
+    "description": "发送前请检查并编辑。",
+    "recipients": "收件人",
+    "subject": "主题",
+    "body": "正文 (HTML)",
+    "language": "邮件语言",
+    "drafting": "正在起草邮件...",
+    "scheduleTomorrow": "安排在明天上午9点发送",
+    "sendNow": "立即发送",
+    "recipientsPlaceholder": "alex@example.com, sam@example.com",
+    "errorDraft": "起草跟进邮件失败",
+    "errorRecipients": "请至少添加一位收件人",
+    "errorSend": "发送邮件失败",
+    "errorGeneric": "出错了",
+    "successNow": "跟进邮件已发送给 {count, plural, other {# 位参会者}} ✓",
+    "successScheduled": "跟进邮件已安排在明天上午9点发送 ✓"
+  }
+}

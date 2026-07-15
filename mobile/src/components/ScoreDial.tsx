@@ -1,14 +1,6 @@
-import React, { useEffect } from "react";
-import { View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, Animated } from "react-native";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
-import Animated, {
-  useSharedValue,
-  useAnimatedProps,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface Props {
   score: number;
@@ -26,20 +18,21 @@ function scoreColor(score: number): [string, string] {
 export default function ScoreDial({ score, size = 180, strokeWidth = 14 }: Props) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const progress = useSharedValue(0);
+  const progress = useRef(new Animated.Value(0)).current;
+  const [colorStart, colorEnd] = scoreColor(score);
 
   useEffect(() => {
-    progress.value = withTiming(score / 100, {
+    Animated.timing(progress, {
+      toValue: score / 100,
       duration: 1000,
-      easing: Easing.out(Easing.cubic),
-    });
+      useNativeDriver: false,
+    }).start();
   }, [score]);
 
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: circumference * (1 - progress.value),
-  }));
-
-  const [colorStart, colorEnd] = scoreColor(score);
+  const strokeDashoffset = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0],
+  });
 
   return (
     <View style={{ width: size, height: size }}>
@@ -58,7 +51,7 @@ export default function ScoreDial({ score, size = 180, strokeWidth = 14 }: Props
           strokeWidth={strokeWidth}
           fill="none"
         />
-        <AnimatedCircle
+        <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -67,7 +60,7 @@ export default function ScoreDial({ score, size = 180, strokeWidth = 14 }: Props
           fill="none"
           strokeLinecap="round"
           strokeDasharray={circumference}
-          animatedProps={animatedProps}
+          strokeDashoffset={circumference * (1 - score / 100)}
           transform={`rotate(-90, ${size / 2}, ${size / 2})`}
         />
       </Svg>

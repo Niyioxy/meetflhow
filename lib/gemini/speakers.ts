@@ -51,3 +51,35 @@ Use 'Unknown' if speaker cannot be identified.`;
 
   return z.array(speakerSegmentSchema).parse(raw);
 }
+
+const labelNameSchema = z.record(z.string(), z.string());
+
+const LABEL_SYSTEM_PROMPT = `You are an expert at figuring out who is speaking in a meeting transcript that has already been split into speaker labels (e.g. "Speaker 0", "Speaker 1"). For each label, use the sample lines and the attendee list to guess a real display name. Use "Unknown Speaker N" (keeping the original label) when you can't tell.`;
+
+/**
+ * Given a few representative utterance samples per already-diarized speaker
+ * label, guesses a real display name for each. Used only for labels that
+ * couldn't be matched by voice, so it's a much smaller/cheaper ask than
+ * reconstructing the whole transcript.
+ */
+export async function nameSpeakerLabels(
+  labelSamples: { label: string; samples: string[] }[],
+  attendees: string[]
+): Promise<Record<string, string>> {
+  if (labelSamples.length === 0) return {};
+
+  const prompt = `Speaker labels with sample lines from a meeting transcript:
+${labelSamples
+  .map((l) => `${l.label}:\n${l.samples.map((s) => `- ${s}`).join("\n")}`)
+  .join("\n\n")}
+Attendees: ${attendees.length > 0 ? attendees.join(", ") : "(not provided)"}
+Return a JSON object mapping each label exactly as given to a guessed display name,
+e.g. { "Speaker 0": "Alex", "Speaker 1": "Unknown Speaker 1" }.`;
+
+  const raw = await geminiJSON<unknown>(prompt, {
+    systemInstruction: LABEL_SYSTEM_PROMPT,
+    temperature: 0.2,
+  });
+
+  return labelNameSchema.parse(raw);
+}

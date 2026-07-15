@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
+import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { meetings, transcripts } from "@/db/schema";
-import { transcribeAudio } from "@/lib/deepgram/transcribe";
-import { runAllMeetingAnalyses, wordCount } from "@/lib/meetings";
+import { meetings, contentTypeEnum, type ContentType } from "@/db/schema";
+import { triggerInternalStep } from "@/lib/internal-auth";
 import { getWorkspaceMember } from "@/lib/workspace-auth";
 import { eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -20,6 +20,10 @@ export async function POST(req: Request) {
   const file = formData.get("file");
   const title = (formData.get("title") as string | null)?.trim();
   const platform = (formData.get("platform") as string | null) || "other";
+  const contentTypeInput = formData.get("contentType") as string | null;
+  const contentType: ContentType = contentTypeEnum.includes(contentTypeInput as ContentType)
+    ? (contentTypeInput as ContentType)
+    : "meeting";
   const workspaceId = (formData.get("workspaceId") as string | null) || null;
   const sharedWithWorkspace = formData.get("sharedWithWorkspace") === "true";
 
@@ -41,6 +45,7 @@ export async function POST(req: Request) {
       userId: session.user.id,
       title: title || file.name || "Untitled meeting",
       platform,
+      contentType,
       status: "uploading",
       workspaceId,
       sharedWithWorkspace: workspaceId ? sharedWithWorkspace : false,
@@ -48,38 +53,28 @@ export async function POST(req: Request) {
     .returning();
 
   try {
-    await db
-      .update(meetings)
-      .set({ status: "transcribing" })
-      .where(eq(meetings.id, meeting.id));
-
-    const transcription = await transcribeAudio(file);
-
-    await db.insert(transcripts).values({
-      meetingId: meeting.id,
-      fullText: transcription.text,
-      language: transcription.language,
-      wordCount: wordCount(transcription.text),
+    // Transient handoff only: this blob is deleted by the process-transcript
+    // step as soon as Deepgram has consumed it. MeetFlhow never retains raw
+    // meeting audio.
+    const blob = await put(`meeting-uploads/${meeting.id}-${file.name || "recording"}`, file, {
+      access: "public",
+      addRandomSuffix: true,
     });
 
-    if (transcription.durationSeconds) {
-      await db
-        .update(meetings)
-        .set({ durationSeconds: Math.round(transcription.durationSeconds) })
-        .where(eq(meetings.id, meeting.id));
-    }
+    await db.update(meetings).set({ status: "transcribing" }).where(eq(meetings.id, meeting.id));
 
-    await runAllMeetingAnalyses(meeting.id, transcription.text);
+    await triggerInternalStep(`/api/meetings/${meeting.id}/process-transcript`, {
+      blobUrl: blob.url,
+      userId: session.user.id,
+      workspaceId,
+    });
 
-    return NextResponse.json({ meetingId: meeting.id, status: "ready" });
+    return NextResponse.json({ meetingId: meeting.id, status: "transcribing" });
   } catch (error) {
-    console.error("Upload pipeline failed", error);
-    await db
-      .update(meetings)
-      .set({ status: "failed" })
-      .where(eq(meetings.id, meeting.id));
+    console.error("Upload hand-off failed", error);
+    await db.update(meetings).set({ status: "failed" }).where(eq(meetings.id, meeting.id));
     return NextResponse.json(
-      { error: "Failed to process meeting", meetingId: meeting.id },
+      { error: "Failed to start processing meeting", meetingId: meeting.id },
       { status: 500 }
     );
   }

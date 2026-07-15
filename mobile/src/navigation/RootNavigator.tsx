@@ -4,7 +4,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { useAuthStore } from "@/store/authStore";
 import TabNavigator from "./TabNavigator";
-import LoginScreen from "@/app/LoginScreen";
+import LoginScreen from "@/screens/LoginScreen";
 import type { RootStackParamList } from "@/types";
 
 const Stack = createStackNavigator<RootStackParamList>();

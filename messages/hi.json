@@ -1,0 +1,78 @@
+{
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "close": "बंद करें",
+    "signOut": "साइन आउट करें",
+    "original": "मूल",
+    "translatedNotice": "MeetFlhow AI द्वारा अनूदित — इसमें त्रुटियां हो सकती हैं"
+  },
+  "nav": {
+    "dashboard": "डैशबोर्ड",
+    "meetings": "मीटिंग्स",
+    "calendar": "कैलेंडर",
+    "insights": "इनसाइट्स",
+    "tasks": "कार्य",
+    "todos": "टूडू",
+    "team": "टीम",
+    "settings": "सेटिंग्स"
+  },
+  "topbar": {
+    "language": "भाषा"
+  },
+  "login": {
+    "tagline": "अपनी मीटिंग्स को स्वचालित रूप से सारांश, कार्य-मदों और निर्णयों में बदलें।",
+    "continueWithGoogle": "Google के साथ जारी रखें"
+  },
+  "settings": {
+    "title": "सेटिंग्स",
+    "subtitle": "अपने खाते और एकीकरण प्रबंधित करें।",
+    "profile": "प्रोफ़ाइल",
+    "workspace": "वर्कस्पेस",
+    "workspaceDescription": "अपने वर्कस्पेस के सदस्यों, भूमिकाओं और आमंत्रणों को प्रबंधित करें।",
+    "manageWorkspace": "वर्कस्पेस प्रबंधित करें",
+    "integrations": "एकीकरण",
+    "integrationsDescription": "Slack, Notion, Jira, Linear, वेबहुक्स और Chrome एक्सटेंशन कनेक्ट करें।",
+    "manageIntegrations": "एकीकरण प्रबंधित करें",
+    "googleCalendar": "Google कैलेंडर",
+    "googleCalendarDescription": "शेड्यूल की गई मीटिंग्स को सिंक करने और Google Meet लिंक स्वतः जनरेट करने के लिए अपना Google खाता कनेक्ट करें।",
+    "connected": "कनेक्टेड",
+    "notConnected": "कनेक्ट नहीं है",
+    "account": "खाता",
+    "signOut": "साइन आउट करें"
+  },
+  "meetingDetail": {
+    "keyDecisions": "मुख्य निर्णय",
+    "keyTakeaways": "मुख्य बातें",
+    "openQuestions": "खुले प्रश्न",
+    "summary": "सारांश",
+    "actionItems": "कार्य-मद",
+    "transcript": "प्रतिलेख",
+    "processingError": "इस मीटिंग को प्रोसेस करते समय कुछ गलत हो गया। कृपया इसे फिर से अपलोड करें।",
+    "translate": "अनुवाद करें",
+    "translating": "अनुवाद हो रहा है...",
+    "translatedNotice": "MeetFlhow AI द्वारा अनूदित — इसमें त्रुटियां हो सकती हैं"
+  },
+  "followUpEmail": {
+    "button": "फ़ॉलो-अप ईमेल भेजें",
+    "title": "फ़ॉलो-अप ईमेल",
+    "description": "भेजने से पहले समीक्षा करें और संपादित करें।",
+    "recipients": "प्राप्तकर्ता",
+    "subject": "विषय",
+    "body": "मुख्य भाग (HTML)",
+    "language": "ईमेल की भाषा",
+    "drafting": "ईमेल तैयार किया जा रहा है...",
+    "scheduleTomorrow": "कल सुबह 9 बजे के लिए शेड्यूल करें",
+    "sendNow": "अभी भेजें",
+    "recipientsPlaceholder": "alex@example.com, sam@example.com",
+    "errorDraft": "फ़ॉलो-अप ईमेल तैयार करने में विफल",
+    "errorRecipients": "कम से कम एक प्राप्तकर्ता जोड़ें",
+    "errorSend": "ईमेल भेजने में विफल",
+    "errorGeneric": "कुछ गलत हो गया",
+    "successNow": "फ़ॉलो-अप {count, plural, one {# प्रतिभागी} other {# प्रतिभागियों}} को भेजा गया ✓",
+    "successScheduled": "फ़ॉलो-अप कल सुबह 9 बजे के लिए शेड्यूल किया गया ✓"
+  }
+}

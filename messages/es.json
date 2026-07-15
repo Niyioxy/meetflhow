@@ -1,0 +1,78 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "signOut": "Cerrar sesión",
+    "original": "Original",
+    "translatedNotice": "Traducido por MeetFlhow AI — puede contener errores"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "meetings": "Reuniones",
+    "calendar": "Calendario",
+    "insights": "Estadísticas",
+    "tasks": "Tareas",
+    "todos": "Pendientes",
+    "team": "Equipo",
+    "settings": "Configuración"
+  },
+  "topbar": {
+    "language": "Idioma"
+  },
+  "login": {
+    "tagline": "Convierte automáticamente tus reuniones en resúmenes, tareas y decisiones.",
+    "continueWithGoogle": "Continuar con Google"
+  },
+  "settings": {
+    "title": "Configuración",
+    "subtitle": "Administra tu cuenta e integraciones.",
+    "profile": "Perfil",
+    "workspace": "Espacio de trabajo",
+    "workspaceDescription": "Administra los miembros, roles e invitaciones de tu espacio de trabajo.",
+    "manageWorkspace": "Administrar espacio de trabajo",
+    "integrations": "Integraciones",
+    "integrationsDescription": "Conecta Slack, Notion, Jira, Linear, webhooks y la extensión de Chrome.",
+    "manageIntegrations": "Administrar integraciones",
+    "googleCalendar": "Google Calendar",
+    "googleCalendarDescription": "Conecta tu cuenta de Google para sincronizar las reuniones programadas y generar enlaces de Google Meet automáticamente.",
+    "connected": "Conectado",
+    "notConnected": "No conectado",
+    "account": "Cuenta",
+    "signOut": "Cerrar sesión"
+  },
+  "meetingDetail": {
+    "keyDecisions": "Decisiones clave",
+    "keyTakeaways": "Puntos clave",
+    "openQuestions": "Preguntas abiertas",
+    "summary": "Resumen",
+    "actionItems": "Tareas",
+    "transcript": "Transcripción",
+    "processingError": "Ocurrió un error al procesar esta reunión. Intenta subirla de nuevo.",
+    "translate": "Traducir",
+    "translating": "Traduciendo...",
+    "translatedNotice": "Traducido por MeetFlhow AI — puede contener errores"
+  },
+  "followUpEmail": {
+    "button": "Enviar correo de seguimiento",
+    "title": "Correo de seguimiento",
+    "description": "Revisa y edita antes de enviar.",
+    "recipients": "Destinatarios",
+    "subject": "Asunto",
+    "body": "Cuerpo (HTML)",
+    "language": "Idioma del correo",
+    "drafting": "Redactando correo...",
+    "scheduleTomorrow": "Programar para mañana a las 9am",
+    "sendNow": "Enviar ahora",
+    "recipientsPlaceholder": "alex@example.com, sam@example.com",
+    "errorDraft": "Error al redactar el correo de seguimiento",
+    "errorRecipients": "Agrega al menos un destinatario",
+    "errorSend": "Error al enviar el correo",
+    "errorGeneric": "Algo salió mal",
+    "successNow": "Seguimiento enviado a {count, plural, one {# asistente} other {# asistentes}} ✓",
+    "successScheduled": "Seguimiento programado para mañana a las 9am ✓"
+  }
+}

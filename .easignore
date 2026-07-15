@@ -1,0 +1,25 @@
+# EAS Build archives from the git repo root in this monorepo layout, not
+# from mobile/ — exclude everything the Android build doesn't need so the
+# upload archive doesn't include the whole Next.js app, its build output,
+# and the Python voice-service.
+node_modules
+mobile/node_modules
+mobile/android
+mobile/ios
+.next
+.git
+.vercel
+voice-service/.venv
+voice-service/model_cache
+drizzle
+*.log
+
+# Secrets — .easignore replaces .gitignore's exclusions for EAS Build
+# rather than adding to them, so these must be listed explicitly or they
+# get uploaded to Expo's build servers. None of these are needed for the
+# build anyway — the required EXPO_PUBLIC_* values are set directly in
+# eas.json's per-profile "env" blocks.
+.env
+.env.local
+.env*.local
+mobile/.env

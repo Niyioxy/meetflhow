@@ -1,6 +1,5 @@
-import React from "react";
-import { View } from "react-native";
-import Animated, { useAnimatedStyle, withSpring } from "react-native-reanimated";
+import React, { useEffect, useRef } from "react";
+import { View, Animated } from "react-native";
 
 interface Props {
   levels: number[];
@@ -13,17 +12,29 @@ const BAR_MIN = 4;
 const BAR_MAX_FRACTION = 0.9;
 
 function AnimatedBar({ level, maxHeight, color }: { level: number; maxHeight: number; color: string }) {
-  const barHeight = Math.max(BAR_MIN, level * maxHeight * BAR_MAX_FRACTION);
+  const heightAnim = useRef(new Animated.Value(BAR_MIN)).current;
+  const targetHeight = Math.max(BAR_MIN, level * maxHeight * BAR_MAX_FRACTION);
 
-  const style = useAnimatedStyle(() => ({
-    height: withSpring(barHeight, { damping: 10, stiffness: 120 }),
-    backgroundColor: color,
-    borderRadius: 2,
-    width: 3,
-    alignSelf: "center" as const,
-  }));
+  useEffect(() => {
+    Animated.spring(heightAnim, {
+      toValue: targetHeight,
+      damping: 10,
+      stiffness: 120,
+      useNativeDriver: false,
+    }).start();
+  }, [targetHeight]);
 
-  return <Animated.View style={style} />;
+  return (
+    <Animated.View
+      style={{
+        height: heightAnim,
+        backgroundColor: color,
+        borderRadius: 2,
+        width: 3,
+        alignSelf: "center",
+      }}
+    />
+  );
 }
 
 export default function AudioWaveform({ levels, barCount = 40, height = 60, color = "#2563EB" }: Props) {

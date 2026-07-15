@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Type } from "@google/genai";
 import { geminiJSON } from "./json";
+import type { SupportedLanguage } from "@/db/schema";
 
 const followUpEmailSchema = z.object({
   subject: z.string(),
@@ -9,6 +10,14 @@ const followUpEmailSchema = z.object({
 });
 
 export type FollowUpEmailContent = z.infer<typeof followUpEmailSchema>;
+
+const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
+  en: "English",
+  hi: "Hindi",
+  zh: "Simplified Chinese",
+  fr: "French",
+  es: "Spanish",
+};
 
 const SYSTEM_PROMPT = `You are an expert at writing concise, professional meeting follow-up emails. Use only <p>, <ul>, <li>, <strong> tags in the body. Base everything strictly on the meeting context provided.`;
 
@@ -28,6 +37,7 @@ export async function generateFollowUpEmail(input: {
   summary: string;
   decisions: string[];
   actionItems: { task: string; owner: string | null; deadline: string | null }[];
+  language?: SupportedLanguage;
 }): Promise<FollowUpEmailContent> {
   const actionItemsText = input.actionItems
     .map(
@@ -36,11 +46,16 @@ export async function generateFollowUpEmail(input: {
     )
     .join("\n") || "None";
 
+  const languageInstruction = input.language
+    ? `Write the subject, body, and preview_text in ${LANGUAGE_NAMES[input.language]}. Preserve speaker names, technical terms, and proper nouns unchanged.`
+    : "";
+
   const prompt = `Write a professional follow-up email for this meeting.
 Title: ${input.title} | Date: ${input.date}
 Summary: ${input.summary}
 Decisions: ${input.decisions.join("; ") || "None"}
 Action items: ${actionItemsText}
+${languageInstruction}
 Return JSON:
 {
   subject: string,

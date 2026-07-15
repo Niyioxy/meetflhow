@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Notifications from "expo-notifications";
 import { getPendingRecordings, markAsSynced, clearSyncedRecordings } from "./offline";
 import { api } from "./api";

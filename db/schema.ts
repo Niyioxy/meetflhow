@@ -4,6 +4,7 @@ import {
   timestamp,
   uuid,
   integer,
+  real,
   primaryKey,
   unique,
   boolean,
@@ -31,6 +32,7 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { mode: "date" }),
   role: text("role").$type<UserRole>().notNull().default("member"),
   insightsCache: jsonb("insights_cache").$type<InsightsCache>(),
+  language: text("language").notNull().default("en"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -139,6 +141,9 @@ export const meetingStatusEnum = [
 ] as const;
 export type MeetingStatus = (typeof meetingStatusEnum)[number];
 
+export const contentTypeEnum = ["meeting", "training", "sermon", "podcast"] as const;
+export type ContentType = (typeof contentTypeEnum)[number];
+
 export const meetings = pgTable("meetings", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id")
@@ -148,6 +153,7 @@ export const meetings = pgTable("meetings", {
   sharedWithWorkspace: boolean("shared_with_workspace").notNull().default(false),
   title: text("title").notNull(),
   platform: text("platform").notNull().default("other"),
+  contentType: text("content_type").$type<ContentType>().notNull().default("meeting"),
   durationSeconds: integer("duration_seconds"),
   status: text("status").$type<MeetingStatus>().notNull().default("uploading"),
   attendeeSalaries: jsonb("attendee_salaries").$type<AttendeeSalary[]>(),
@@ -155,6 +161,14 @@ export const meetings = pgTable("meetings", {
   notionPageId: text("notion_page_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const speakerIdentificationMethodEnum = [
+  "voice_match",
+  "ai_inference",
+  "manual",
+] as const;
+export type SpeakerIdentificationMethod =
+  (typeof speakerIdentificationMethodEnum)[number];
 
 export const transcripts = pgTable("transcripts", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -165,7 +179,25 @@ export const transcripts = pgTable("transcripts", {
   language: text("language"),
   wordCount: integer("word_count").notNull().default(0),
   speakerSegments: jsonb("speaker_segments").$type<SpeakerSegment[]>(),
+  speakerIdentificationMethod: text("speaker_identification_method")
+    .$type<SpeakerIdentificationMethod>()
+    .notNull()
+    .default("ai_inference"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const voiceProfiles = pgTable("voice_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  embedding: jsonb("embedding").$type<number[]>().notNull(),
+  enrolmentQuality: real("enrolment_quality"),
+  sampleDurationSeconds: integer("sample_duration_seconds"),
+  consentAt: timestamp("consent_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at"),
 });
 
 export const priorityEnum = ["high", "medium", "low"] as const;
@@ -282,11 +314,46 @@ export const analysis = pgTable("analysis", {
   summary: text("summary").notNull(),
   decisions: text("decisions").array().notNull().default([]),
   openQuestions: text("open_questions").array().notNull().default([]),
+  highlights: text("highlights").array(),
   sentiment: text("sentiment").$type<Sentiment>().notNull().default("neutral"),
   meetingScore: jsonb("meeting_score").$type<MeetingCoachScore>(),
   sentimentTimeline: jsonb("sentiment_timeline").$type<SentimentTimeline>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const supportedLanguageEnum = ["en", "hi", "zh", "fr", "es"] as const;
+export type SupportedLanguage = (typeof supportedLanguageEnum)[number];
+
+export interface TranslatedTranscriptSegment {
+  speaker: string;
+  text: string;
+}
+
+export interface TranslatedActionItem {
+  task: string;
+  owner: string | null;
+  deadline: string | null;
+}
+
+export const translations = pgTable(
+  "translations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    meetingId: uuid("meeting_id")
+      .notNull()
+      .references(() => meetings.id, { onDelete: "cascade" }),
+    targetLanguage: text("target_language").$type<SupportedLanguage>().notNull(),
+    translatedSummary: text("translated_summary"),
+    translatedTranscript: jsonb("translated_transcript").$type<
+      TranslatedTranscriptSegment[]
+    >(),
+    translatedActionItems: jsonb("translated_action_items").$type<
+      TranslatedActionItem[]
+    >(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [unique().on(table.meetingId, table.targetLanguage)]
+);
 
 export const scheduledMeetingPlatformEnum = [
   "Google Meet",
@@ -481,13 +548,21 @@ export const extensionTokens = pgTable("extension_tokens", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   meetings: many(meetings),
   scheduledMeetings: many(scheduledMeetings),
   tasks: many(tasks),
   todos: many(todos),
   ownedWorkspaces: many(workspaces),
   workspaceMemberships: many(workspaceMembers),
+  voiceProfile: one(voiceProfiles, {
+    fields: [users.id],
+    references: [voiceProfiles.userId],
+  }),
+}));
+
+export const voiceProfilesRelations = relations(voiceProfiles, ({ one }) => ({
+  user: one(users, { fields: [voiceProfiles.userId], references: [users.id] }),
 }));
 
 export const meetingsRelations = relations(meetings, ({ one, many }) => ({

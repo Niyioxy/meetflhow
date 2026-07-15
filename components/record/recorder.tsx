@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useMediaRecorder } from "@/hooks/use-media-recorder";
 import { Waveform } from "@/components/record/waveform";
+import { LiveCaptions } from "@/components/record/live-captions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PlatformSelect } from "@/components/upload/platform-select";
+import { ContentTypeSelect } from "@/components/upload/content-type-select";
 import { cn } from "@/lib/utils";
 import { Mic, Pause, Play, Square, Download, Loader2, Sparkles, RotateCcw } from "lucide-react";
 
@@ -34,6 +36,7 @@ export function Recorder({
 
   const [title, setTitle] = useState(initialTitle ?? "");
   const [platform, setPlatform] = useState(initialPlatform ?? "in-person");
+  const [contentType, setContentType] = useState("meeting");
   const [submitting, setSubmitting] = useState(false);
 
   const audioUrl = useMemo(() => (audioBlob ? URL.createObjectURL(audioBlob) : null), [audioBlob]);
@@ -54,6 +57,7 @@ export function Recorder({
       formData.append("file", audioBlob, `${title || "recording"}.webm`);
       formData.append("title", title || "Recorded meeting");
       formData.append("platform", platform);
+      formData.append("contentType", contentType);
 
       const res = await fetch("/api/meetings/upload", {
         method: "POST",
@@ -144,13 +148,15 @@ export function Recorder({
               Record again
             </Button>
           )}
+
+          <LiveCaptions stream={stream} active={isRecording} />
         </div>
 
         {status === "stopped" && audioUrl && (
           <div className="flex flex-col gap-4">
             <audio controls src={audioUrl} className="w-full" />
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="rec-title">Title</Label>
                 <Input
@@ -163,6 +169,10 @@ export function Recorder({
               <div className="flex flex-col gap-2">
                 <Label>Platform</Label>
                 <PlatformSelect value={platform} onChange={setPlatform} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>Content type</Label>
+                <ContentTypeSelect value={contentType} onChange={setContentType} />
               </div>
             </div>
 

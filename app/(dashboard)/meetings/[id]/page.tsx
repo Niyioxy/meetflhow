@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { getMeetingDetail } from "@/lib/meetings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import { MeetingCostCard } from "@/components/meeting/meeting-cost-card";
 import { ShareModal } from "@/components/meeting/share-modal";
 import { PostToSlackButton } from "@/components/meeting/post-to-slack-button";
 import { PushToNotionButton } from "@/components/meeting/push-to-notion-button";
+import { TranslatableMeetingContent } from "@/components/meeting/translatable-meeting-content";
 
 export default async function MeetingDetailPage({
   params,
@@ -24,6 +26,7 @@ export default async function MeetingDetailPage({
 }) {
   const session = await auth();
   const meeting = await getMeetingDetail(params.id, session!.user.id);
+  const t = await getTranslations("meetingDetail");
 
   if (!meeting) {
     notFound();
@@ -63,33 +66,32 @@ export default async function MeetingDetailPage({
       {meeting.status === "failed" && (
         <Card className="border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.08)]">
           <CardContent className="py-6 text-[#F87171]">
-            Something went wrong while processing this meeting. Try uploading it again.
+            {t("processingError")}
           </CardContent>
         </Card>
       )}
 
-      {meeting.analysis && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed">{meeting.analysis.summary}</p>
-          </CardContent>
-        </Card>
-      )}
+      {(() => {
+        const isMeeting = meeting.contentType === "meeting";
+        const primaryPoints = isMeeting ? meeting.analysis?.decisions ?? [] : meeting.analysis?.highlights ?? [];
+        const primaryTitle = isMeeting ? t("keyDecisions") : t("keyTakeaways");
+        const openQuestions = meeting.analysis?.openQuestions ?? [];
 
-      {meeting.analysis && (meeting.analysis.decisions.length > 0 || meeting.analysis.openQuestions.length > 0) && (
+        if (!meeting.analysis || (primaryPoints.length === 0 && openQuestions.length === 0)) {
+          return null;
+        }
+
+        return (
         <div className="grid gap-6 sm:grid-cols-2">
-          {meeting.analysis.decisions.length > 0 && (
+          {primaryPoints.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Key decisions</CardTitle>
+                <CardTitle>{primaryTitle}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="list-disc space-y-2 pl-5 text-sm">
-                  {meeting.analysis.decisions.map((decision, i) => (
-                    <li key={i}>{decision}</li>
+                  {primaryPoints.map((point, i) => (
+                    <li key={i}>{point}</li>
                   ))}
                 </ul>
               </CardContent>
@@ -99,7 +101,7 @@ export default async function MeetingDetailPage({
           {meeting.analysis.openQuestions.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Open questions</CardTitle>
+                <CardTitle>{t("openQuestions")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="list-disc space-y-2 pl-5 text-sm">
@@ -111,26 +113,58 @@ export default async function MeetingDetailPage({
             </Card>
           )}
         </div>
-      )}
+        );
+      })()}
 
-      {meeting.status === "ready" && (
-        <ActionItemsCard
-          meetingTitle={meeting.title}
-          workspaceId={meeting.workspaceId}
-          initialItems={meeting.actionItems.map((item) => ({
-            id: item.id,
-            task: item.task,
-            owner: item.owner,
-            assigneeUserId: item.assigneeUserId,
-            deadline: item.deadline,
-            priority: item.priority,
-            status: item.status,
-            externalTicketId: item.externalTicketId,
-            externalTicketUrl: item.externalTicketUrl,
-            externalProvider: item.externalProvider,
-          }))}
-        />
-      )}
+      <TranslatableMeetingContent meetingId={meeting.id}>
+        {meeting.analysis && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("summary")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-relaxed">{meeting.analysis.summary}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {meeting.status === "ready" && meeting.contentType === "meeting" && (
+          <ActionItemsCard
+            meetingTitle={meeting.title}
+            workspaceId={meeting.workspaceId}
+            initialItems={meeting.actionItems.map((item) => ({
+              id: item.id,
+              task: item.task,
+              owner: item.owner,
+              assigneeUserId: item.assigneeUserId,
+              deadline: item.deadline,
+              priority: item.priority,
+              status: item.status,
+              externalTicketId: item.externalTicketId,
+              externalTicketUrl: item.externalTicketUrl,
+              externalProvider: item.externalProvider,
+            }))}
+          />
+        )}
+
+        {meeting.transcript && (
+          <TranscriptCard
+            meetingId={meeting.id}
+            fullText={meeting.transcript.fullText}
+            wordCount={meeting.transcript.wordCount}
+            language={meeting.transcript.language}
+            initialSegments={meeting.transcript.speakerSegments ?? null}
+            workspaceId={meeting.workspaceId}
+            candidateNames={Array.from(
+              new Set(
+                (meeting.transcript.speakerSegments ?? [])
+                  .filter((s) => s.identificationMethod === "voice_match" || s.identificationMethod === "manual")
+                  .map((s) => s.speaker)
+              )
+            )}
+          />
+        )}
+      </TranslatableMeetingContent>
 
       {meeting.status === "ready" && (
         <MeetingCostCard
@@ -148,7 +182,7 @@ export default async function MeetingDetailPage({
         />
       )}
 
-      {meeting.status === "ready" && meeting.transcript && (
+      {meeting.status === "ready" && meeting.transcript && meeting.contentType === "meeting" && (
         <MeetingCoachCard
           meetingId={meeting.id}
           initialScore={meeting.analysis?.meetingScore ?? null}
@@ -159,17 +193,6 @@ export default async function MeetingDetailPage({
         <SentimentTimelineCard
           meetingId={meeting.id}
           initialTimeline={meeting.analysis?.sentimentTimeline ?? null}
-        />
-      )}
-
-      {meeting.transcript && (
-        <TranscriptCard
-          meetingId={meeting.id}
-          fullText={meeting.transcript.fullText}
-          wordCount={meeting.transcript.wordCount}
-          language={meeting.transcript.language}
-          initialSegments={meeting.transcript.speakerSegments ?? null}
-          workspaceId={meeting.workspaceId}
         />
       )}
     </div>

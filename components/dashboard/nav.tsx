@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { LanguageSwitcher } from "@/components/dashboard/language-switcher";
 import { LogOut } from "lucide-react";
+import type { Locale } from "@/i18n/config";
 import {
   IconHome,
   IconMicrophone,
@@ -23,16 +26,16 @@ import {
 import type { UserRole } from "@/db/schema";
 
 const links = [
-  { href: "/dashboard", label: "Dashboard", icon: IconHome },
-  { href: "/meetings", label: "Meetings", icon: IconMicrophone },
-  { href: "/calendar", label: "Calendar", icon: IconCalendar },
-  { href: "/insights", label: "Insights", icon: IconChartBar },
-  { href: "/tasks", label: "Tasks", icon: IconLayoutKanban },
-  { href: "/todos", label: "Todos", icon: IconCheckbox },
-  { href: "/settings", label: "Settings", icon: IconSettings },
-];
+  { href: "/dashboard", labelKey: "dashboard", icon: IconHome },
+  { href: "/meetings", labelKey: "meetings", icon: IconMicrophone },
+  { href: "/calendar", labelKey: "calendar", icon: IconCalendar },
+  { href: "/insights", labelKey: "insights", icon: IconChartBar },
+  { href: "/tasks", labelKey: "tasks", icon: IconLayoutKanban },
+  { href: "/todos", labelKey: "todos", icon: IconCheckbox },
+  { href: "/settings", labelKey: "settings", icon: IconSettings },
+] as const;
 
-const teamLink = { href: "/team", label: "Team", icon: IconUsers };
+const teamLink = { href: "/team", labelKey: "team", icon: IconUsers } as const;
 
 function visibleLinks(role: UserRole | undefined) {
   return role === "manager" || role === "admin" ? [...links, teamLink] : links;
@@ -44,6 +47,8 @@ export function DashboardNav({
   user: { name?: string | null; email?: string | null; image?: string | null; role?: UserRole };
 }) {
   const pathname = usePathname();
+  const t = useTranslations("nav");
+  const tCommon = useTranslations("common");
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border bg-[var(--bg-surface)] sm:flex">
@@ -61,7 +66,7 @@ export function DashboardNav({
           const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
           return (
             <Link
-              key={link.label}
+              key={link.labelKey}
               href={link.href}
               className={cn(
                 "flex items-center gap-2.5 rounded-[var(--radius-sm)] border-l-[3px] px-3 py-2.5 text-sm font-medium transition-colors duration-150",
@@ -71,7 +76,7 @@ export function DashboardNav({
               )}
             >
               <Icon className="h-[18px] w-[18px] shrink-0" />
-              {link.label}
+              {t(link.labelKey)}
             </Link>
           );
         })}
@@ -92,7 +97,7 @@ export function DashboardNav({
         <Button
           variant="ghost"
           size="icon"
-          title="Sign out"
+          title={tCommon("signOut")}
           onClick={() => signOut({ callbackUrl: "/login" })}
         >
           <LogOut className="h-4 w-4" />
@@ -104,10 +109,14 @@ export function DashboardNav({
 
 export function MobileNav({
   user,
+  locale,
 }: {
   user: { name?: string | null; email?: string | null; image?: string | null; role?: UserRole };
+  locale: Locale;
 }) {
   const pathname = usePathname();
+  const t = useTranslations("nav");
+  const tCommon = useTranslations("common");
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-[var(--bg-surface)]/95 backdrop-blur sm:hidden">
@@ -117,6 +126,7 @@ export function MobileNav({
         </Link>
         <div className="flex items-center gap-3">
           <WorkspaceSwitcher compact />
+          <LanguageSwitcher currentLocale={locale} />
           <NotificationBell />
           <Avatar className="h-8 w-8">
             <AvatarImage src={user.image ?? undefined} alt={user.name ?? ""} />
@@ -127,7 +137,7 @@ export function MobileNav({
           <Button
             variant="ghost"
             size="icon"
-            title="Sign out"
+            title={tCommon("signOut")}
             onClick={() => signOut({ callbackUrl: "/login" })}
           >
             <LogOut className="h-4 w-4" />
@@ -150,7 +160,7 @@ export function MobileNav({
               )}
             >
               <Icon className="h-4 w-4" />
-              {link.label}
+              {t(link.labelKey)}
             </Link>
           );
         })}

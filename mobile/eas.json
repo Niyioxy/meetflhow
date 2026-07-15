@@ -8,17 +8,35 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://meetflhow.vercel.app",
+        "EXPO_PUBLIC_APP_NAME": "MeetFlhow",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "837008785051-ddahv7kook9blsif2u2pa4m64lbdo9fb.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "837008785051-d2065i04dpucdh79ujgbp34au8o5dq98.apps.googleusercontent.com"
       }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://meetflhow.vercel.app",
+        "EXPO_PUBLIC_APP_NAME": "MeetFlhow",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "837008785051-ddahv7kook9blsif2u2pa4m64lbdo9fb.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "837008785051-d2065i04dpucdh79ujgbp34au8o5dq98.apps.googleusercontent.com"
       }
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://meetflhow.vercel.app",
+        "EXPO_PUBLIC_APP_NAME": "MeetFlhow",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "837008785051-ddahv7kook9blsif2u2pa4m64lbdo9fb.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "837008785051-d2065i04dpucdh79ujgbp34au8o5dq98.apps.googleusercontent.com"
       }
     }
   },

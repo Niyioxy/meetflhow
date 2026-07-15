@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+speechbrain
+torch --index-url https://download.pytorch.org/whl/cpu
+torchaudio
+soundfile
+python-multipart
