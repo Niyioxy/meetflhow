@@ -40,7 +40,7 @@ export function HoursBarChart({ data }: { data: { date: string; hours: number }[
                 />
                 <YAxis stroke="var(--text-secondary)" fontSize={12} />
                 <Tooltip
-                  labelFormatter={(v) => format(new Date(v), "MMM d, yyyy")}
+                  labelFormatter={(v) => format(new Date(String(v)), "MMM d, yyyy")}
                   formatter={(value) => [`${Number(value).toFixed(1)}h`, "Hours"]}
                 />
                 <ReferenceLine
