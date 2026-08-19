@@ -6,9 +6,26 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/ca
 import { Badge } from "@/components/ui/badge";
 import { getAllPosts } from "@/lib/blog";
 
+const TITLE = "Blog — MeetFlhow";
+const DESCRIPTION = "Product updates, meeting playbooks, and ideas on making meetings worth having.";
+
 export const metadata: Metadata = {
-  title: "Blog — MeetFlhow",
-  description: "Product updates, meeting playbooks, and ideas on making meetings worth having.",
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: {
+    canonical: "/blog",
+  },
+  openGraph: {
+    type: "website",
+    url: "/blog",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export default function BlogIndexPage() {

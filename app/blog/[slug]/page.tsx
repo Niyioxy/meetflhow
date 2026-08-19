@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/marketing/site-header";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { mdxComponents } from "@/components/marketing/mdx-components";
 import { getAllPostSlugs, getPostSource } from "@/lib/blog";
+import { SITE_URL, SITE_NAME } from "@/lib/site";
 
 export function generateStaticParams() {
   return getAllPostSlugs().map((slug) => ({ slug }));
@@ -13,10 +14,24 @@ export function generateStaticParams() {
 export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
   const post = getPost(params.slug);
   if (!post) return {};
+  const url = `/blog/${post.meta.slug}`;
   return {
     title: `${post.meta.title} — MeetFlhow Blog`,
     description: post.meta.description,
+    alternates: {
+      canonical: url,
+    },
     openGraph: {
+      type: "article",
+      url,
+      title: post.meta.title,
+      description: post.meta.description,
+      publishedTime: post.meta.date,
+      authors: [post.meta.author],
+      tags: post.meta.tags,
+    },
+    twitter: {
+      card: "summary_large_image",
       title: post.meta.title,
       description: post.meta.description,
     },
@@ -34,8 +49,23 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
 
   const { meta, content } = post;
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: meta.title,
+    description: meta.description,
+    datePublished: meta.date,
+    author: { "@type": "Organization", name: meta.author },
+    publisher: { "@type": "Organization", name: SITE_NAME },
+    mainEntityOfPage: `${SITE_URL}/blog/${meta.slug}`,
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <SiteHeader />
       <article className="mx-auto w-full max-w-3xl px-6 py-20 sm:px-8">
         <p className="text-sm text-muted-foreground">
