@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Logo } from "@/components/ui/logo";
 import { OnboardingVoiceClient } from "./onboarding-voice-client";
+import { SignupConversion } from "@/components/analytics/signup-conversion";
 
 export default async function OnboardingVoicePage() {
   const session = await auth();
@@ -11,6 +12,7 @@ export default async function OnboardingVoicePage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-10">
+      <SignupConversion />
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
           <Logo size="lg" className="mx-auto mb-2" />

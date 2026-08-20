@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -7,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
+import { AnalyticsPageview } from "@/components/analytics/analytics-pageview";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -51,6 +54,10 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={cn("dark font-sans", inter.variable)}>
       <body className="antialiased bg-background text-foreground">
+        <GoogleAnalytics />
+        <Suspense fallback={null}>
+          <AnalyticsPageview />
+        </Suspense>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AuthSessionProvider>{children}</AuthSessionProvider>
           <Toaster richColors position="top-right" theme="dark" />
