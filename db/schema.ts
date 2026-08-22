@@ -376,6 +376,7 @@ export const scheduledMeetings = pgTable("scheduled_meetings", {
   meetLink: text("meet_link"),
   notes: text("notes"),
   googleEventId: text("google_event_id"),
+  microsoftEventId: text("microsoft_event_id"),
   reminderSentAt: timestamp("reminder_sent_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
