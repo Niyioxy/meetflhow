@@ -29,6 +29,7 @@ import {
   RotateCcw,
   ShieldCheck,
   Check,
+  Wand2,
 } from "lucide-react";
 
 const FEATURE_GROUPS: {
@@ -122,6 +123,11 @@ const FEATURE_GROUPS: {
         icon: CalendarClock,
         title: "Real Google Meet & Teams links",
         description: "Schedule a meeting and get an auto-generated, working join link — synced to your calendar.",
+      },
+      {
+        icon: Wand2,
+        title: "Book with an agent",
+        description: "Name an invitee and a duration — MeetFlhow checks your calendar, proposes open times, and books it the moment they pick one.",
       },
     ],
   },
