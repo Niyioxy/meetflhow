@@ -25,7 +25,13 @@
   },
   "login": {
     "tagline": "अपनी मीटिंग्स को स्वचालित रूप से सारांश, कार्य-मदों और निर्णयों में बदलें।",
-    "continueWithGoogle": "Google के साथ जारी रखें"
+    "continueWithGoogle": "Google के साथ जारी रखें",
+    "continueWithMicrosoft": "Microsoft के साथ जारी रखें",
+    "orContinueWithEmail": "या अपने ईमेल से जारी रखें",
+    "emailPlaceholder": "you@work.com",
+    "sendMagicLink": "साइन-इन लिंक भेजें",
+    "checkEmailTitle": "अपना ईमेल जाँचें",
+    "checkEmailDescription": "हमने आपके इनबॉक्स में एक साइन-इन लिंक भेजा है। साइन इन पूरा करने के लिए उस पर क्लिक करें।"
   },
   "settings": {
     "title": "सेटिंग्स",

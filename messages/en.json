@@ -25,7 +25,13 @@
   },
   "login": {
     "tagline": "Turn your meetings into summaries, action items, and decisions — automatically.",
-    "continueWithGoogle": "Continue with Google"
+    "continueWithGoogle": "Continue with Google",
+    "continueWithMicrosoft": "Continue with Microsoft",
+    "orContinueWithEmail": "or continue with email",
+    "emailPlaceholder": "you@work.com",
+    "sendMagicLink": "Send sign-in link",
+    "checkEmailTitle": "Check your email",
+    "checkEmailDescription": "We sent a sign-in link to your inbox. Click it to finish signing in."
   },
   "settings": {
     "title": "Settings",

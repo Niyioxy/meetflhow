@@ -1,13 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
+import { Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/ui/logo";
 
 export function LoginCard({ callbackUrl = "/dashboard" }: { callbackUrl?: string }) {
   const t = useTranslations("login");
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function handleEmailSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSending(true);
+    await signIn("nodemailer", { email, callbackUrl });
+  }
 
   return (
     <Card className="w-full max-w-sm">
@@ -41,6 +53,45 @@ export function LoginCard({ callbackUrl = "/dashboard" }: { callbackUrl?: string
           </svg>
           {t("continueWithGoogle")}
         </Button>
+
+        <Button
+          className="mt-2 w-full"
+          variant="outline"
+          size="lg"
+          onClick={() => signIn("microsoft-entra-id", { callbackUrl })}
+        >
+          <svg className="mr-2 h-4 w-4" viewBox="0 0 23 23">
+            <path fill="#f25022" d="M1 1h10v10H1z" />
+            <path fill="#00a4ef" d="M1 12h10v10H1z" />
+            <path fill="#7fba00" d="M12 1h10v10H12z" />
+            <path fill="#ffb900" d="M12 12h10v10H12z" />
+          </svg>
+          {t("continueWithMicrosoft")}
+        </Button>
+
+        <div className="my-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">{t("orContinueWithEmail")}</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <form onSubmit={handleEmailSignIn} className="flex flex-col gap-2">
+          <Input
+            type="email"
+            placeholder={t("emailPlaceholder")}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Button type="submit" variant="outline" className="w-full" size="lg" disabled={sending}>
+            {sending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Mail className="mr-2 h-4 w-4" />
+            )}
+            {t("sendMagicLink")}
+          </Button>
+        </form>
       </CardContent>
     </Card>
   );

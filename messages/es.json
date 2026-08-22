@@ -25,7 +25,13 @@
   },
   "login": {
     "tagline": "Convierte automáticamente tus reuniones en resúmenes, tareas y decisiones.",
-    "continueWithGoogle": "Continuar con Google"
+    "continueWithGoogle": "Continuar con Google",
+    "continueWithMicrosoft": "Continuar con Microsoft",
+    "orContinueWithEmail": "o continúa con tu correo",
+    "emailPlaceholder": "tu@trabajo.com",
+    "sendMagicLink": "Enviar enlace de acceso",
+    "checkEmailTitle": "Revisa tu correo",
+    "checkEmailDescription": "Te enviamos un enlace de acceso a tu bandeja de entrada. Haz clic en él para iniciar sesión."
   },
   "settings": {
     "title": "Configuración",

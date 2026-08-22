@@ -25,7 +25,13 @@
   },
   "login": {
     "tagline": "自动将您的会议转化为摘要、行动项和决策。",
-    "continueWithGoogle": "使用 Google 继续"
+    "continueWithGoogle": "使用 Google 继续",
+    "continueWithMicrosoft": "使用 Microsoft 继续",
+    "orContinueWithEmail": "或使用邮箱继续",
+    "emailPlaceholder": "you@work.com",
+    "sendMagicLink": "发送登录链接",
+    "checkEmailTitle": "请查收邮件",
+    "checkEmailDescription": "我们已向您的邮箱发送了登录链接，点击即可完成登录。"
   },
   "settings": {
     "title": "设置",

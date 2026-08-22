@@ -25,7 +25,13 @@
   },
   "login": {
     "tagline": "Transformez automatiquement vos réunions en résumés, actions et décisions.",
-    "continueWithGoogle": "Continuer avec Google"
+    "continueWithGoogle": "Continuer avec Google",
+    "continueWithMicrosoft": "Continuer avec Microsoft",
+    "orContinueWithEmail": "ou continuez avec votre e-mail",
+    "emailPlaceholder": "vous@travail.com",
+    "sendMagicLink": "Envoyer le lien de connexion",
+    "checkEmailTitle": "Vérifiez votre e-mail",
+    "checkEmailDescription": "Nous avons envoyé un lien de connexion à votre boîte de réception. Cliquez dessus pour terminer la connexion."
   },
   "settings": {
     "title": "Paramètres",
