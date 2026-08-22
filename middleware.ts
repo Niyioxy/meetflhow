@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC_PATH_PREFIXES = ["/login", "/blog"];
+const PUBLIC_PATH_PREFIXES = ["/login", "/blog", "/book"];
 
 // NextAuth's `database` session strategy can't be verified at the Edge
 // (it requires a DB lookup), so middleware only does an optimistic check

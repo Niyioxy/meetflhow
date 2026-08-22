@@ -5,7 +5,7 @@ import { scheduledMeetings } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { MeetingCalendar } from "@/components/scheduler/meeting-calendar";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 
 export default async function CalendarPage() {
   const session = await auth();
@@ -24,12 +24,20 @@ export default async function CalendarPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
           <p className="text-sm text-muted-foreground">Your scheduled meetings.</p>
         </div>
-        <Button asChild>
-          <Link href="/schedule-meeting">
-            <Plus className="mr-2 h-4 w-4" />
-            Schedule meeting
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/book-with-agent">
+              <Sparkles className="mr-2 h-4 w-4" />
+              Ask an agent to schedule
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/schedule-meeting">
+              <Plus className="mr-2 h-4 w-4" />
+              Schedule meeting
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <MeetingCalendar

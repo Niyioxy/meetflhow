@@ -58,7 +58,7 @@ export async function getValidAccessToken(userId: string): Promise<string | null
   return credentials.access_token;
 }
 
-async function getCalendarClient(userId: string) {
+export async function getCalendarClient(userId: string) {
   const accessToken = await getValidAccessToken(userId);
   if (!accessToken) return null;
 
@@ -157,5 +157,37 @@ export async function deleteCalendarEvent(userId: string, googleEventId: string)
     await calendar.events.delete({ calendarId: "primary", eventId: googleEventId });
   } catch (error) {
     console.error("Failed to delete Google Calendar event", error);
+  }
+}
+
+export interface FreeBusyBlock {
+  start: Date;
+  end: Date;
+}
+
+/** Best-effort: returns null if the user hasn't connected Google Calendar or the API call fails. */
+export async function getBusyBlocks(
+  userId: string,
+  timeMin: Date,
+  timeMax: Date
+): Promise<FreeBusyBlock[] | null> {
+  const calendar = await getCalendarClient(userId);
+  if (!calendar) return null;
+
+  try {
+    const res = await calendar.freebusy.query({
+      requestBody: {
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+        items: [{ id: "primary" }],
+      },
+    });
+    const busy = res.data.calendars?.primary?.busy ?? [];
+    return busy
+      .filter((b): b is { start: string; end: string } => Boolean(b.start && b.end))
+      .map((b) => ({ start: new Date(b.start), end: new Date(b.end) }));
+  } catch (error) {
+    console.error("Failed to fetch Google Calendar free/busy", error);
+    return null;
   }
 }

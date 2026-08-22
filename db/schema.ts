@@ -641,6 +641,42 @@ export const scheduledMeetingsRelations = relations(scheduledMeetings, ({ one })
   user: one(users, { fields: [scheduledMeetings.userId], references: [users.id] }),
 }));
 
+// A pending or completed "propose open slots, invitee picks one" request.
+// Status is derived rather than stored: pending = !respondedAt,
+// expired = !respondedAt && expiresAt < now, booked = respondedAt set.
+export const bookingRequests = pgTable("booking_requests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  durationMinutes: integer("duration_minutes").notNull(),
+  inviteeEmail: text("invitee_email").notNull(),
+  // Locked in at creation time so a mid-flight provider switch can't cause a
+  // mismatch at confirm time.
+  platform: text("platform").$type<ScheduledMeetingPlatform>().notNull(),
+  // 2-3 UTC ISO instants.
+  proposedSlots: jsonb("proposed_slots").$type<string[]>().notNull(),
+  // IANA zone captured client-side at request-creation time.
+  organizerTimezone: text("organizer_timezone").notNull(),
+  token: text("token").notNull().unique(),
+  selectedSlot: timestamp("selected_slot"),
+  scheduledMeetingId: uuid("scheduled_meeting_id").references(() => scheduledMeetings.id, {
+    onDelete: "set null",
+  }),
+  respondedAt: timestamp("responded_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const bookingRequestsRelations = relations(bookingRequests, ({ one }) => ({
+  user: one(users, { fields: [bookingRequests.userId], references: [users.id] }),
+  scheduledMeeting: one(scheduledMeetings, {
+    fields: [bookingRequests.scheduledMeetingId],
+    references: [scheduledMeetings.id],
+  }),
+}));
+
 export const tasksRelations = relations(tasks, ({ one }) => ({
   user: one(users, { fields: [tasks.userId], references: [users.id] }),
   meeting: one(meetings, { fields: [tasks.meetingId], references: [meetings.id] }),
