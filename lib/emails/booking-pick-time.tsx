@@ -19,7 +19,7 @@ export function BookingPickTimeEmail({
       </Heading>
       <Text style={{ fontSize: "14px", color: "#334155", lineHeight: "22px" }}>
         {organizerName} wants to schedule a {durationMinutes}-minute meeting with you. Pick
-        whichever of the proposed times works best — it'll be booked automatically.
+        whichever of the proposed times works best — it&apos;ll be booked automatically.
       </Text>
       <Button href={bookingUrl} style={emailButtonStyle}>
         Choose a time
