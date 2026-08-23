@@ -10,6 +10,8 @@ import {
   boolean,
   jsonb,
   date,
+  vector,
+  index,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 import { relations } from "drizzle-orm";
@@ -691,6 +693,37 @@ export const transcriptsRelations = relations(transcripts, ({ one }) => ({
   meeting: one(meetings, {
     fields: [transcripts.meetingId],
     references: [meetings.id],
+  }),
+}));
+
+export const transcriptChunks = pgTable(
+  "transcript_chunks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    meetingId: uuid("meeting_id")
+      .notNull()
+      .references(() => meetings.id, { onDelete: "cascade" }),
+    transcriptId: uuid("transcript_id")
+      .notNull()
+      .references(() => transcripts.id, { onDelete: "cascade" }),
+    chunkIndex: integer("chunk_index").notNull(),
+    content: text("content").notNull(),
+    embedding: vector("embedding", { dimensions: 768 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    embeddingIdx: index("transcript_chunks_embedding_idx").using(
+      "hnsw",
+      table.embedding.op("vector_cosine_ops")
+    ),
+  })
+);
+
+export const transcriptChunksRelations = relations(transcriptChunks, ({ one }) => ({
+  meeting: one(meetings, { fields: [transcriptChunks.meetingId], references: [meetings.id] }),
+  transcript: one(transcripts, {
+    fields: [transcriptChunks.transcriptId],
+    references: [transcripts.id],
   }),
 }));
 

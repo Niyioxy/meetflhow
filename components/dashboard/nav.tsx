@@ -22,6 +22,7 @@ import {
   IconSettings,
   IconChartBar,
   IconUsers,
+  IconMessageChatbot,
 } from "@tabler/icons-react";
 import type { UserRole } from "@/db/schema";
 
@@ -30,6 +31,7 @@ const links = [
   { href: "/meetings", labelKey: "meetings", icon: IconMicrophone },
   { href: "/calendar", labelKey: "calendar", icon: IconCalendar },
   { href: "/insights", labelKey: "insights", icon: IconChartBar },
+  { href: "/ask", labelKey: "ask", icon: IconMessageChatbot },
   { href: "/tasks", labelKey: "tasks", icon: IconLayoutKanban },
   { href: "/todos", labelKey: "todos", icon: IconCheckbox },
   { href: "/settings", labelKey: "settings", icon: IconSettings },

@@ -78,6 +78,13 @@
       "when": 1787269835394,
       "tag": "0016_powerful_black_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1787437799768,
+      "tag": "0017_nostalgic_nightshade",
+      "breakpoints": true
     }
   ]
 }

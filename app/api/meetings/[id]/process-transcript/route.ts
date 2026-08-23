@@ -47,12 +47,22 @@ async function processTranscript(
 
     const transcription = await transcribeAudio(file);
 
-    await db.insert(transcripts).values({
-      meetingId,
+    const [insertedTranscript] = await db
+      .insert(transcripts)
+      .values({
+        meetingId,
+        fullText: transcription.text,
+        language: transcription.language,
+        wordCount: wordCount(transcription.text),
+      })
+      .returning();
+
+    // Best-effort, independent of the analysis hand-off below — indexing
+    // failure must never mark this meeting failed.
+    triggerInternalStep(`/api/meetings/${meetingId}/process-index`, {
+      transcriptId: insertedTranscript.id,
       fullText: transcription.text,
-      language: transcription.language,
-      wordCount: wordCount(transcription.text),
-    });
+    }).catch((error) => console.error("Failed to trigger process-index", error));
 
     if (transcription.durationSeconds) {
       await db
