@@ -86,6 +86,7 @@ export function UploadForm() {
 
       toast.success("Meeting processed");
       router.push(`/meetings/${data.meetingId}`);
+      router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Something went wrong");
     } finally {
@@ -121,6 +122,7 @@ export function UploadForm() {
 
       toast.success("Transcript analyzed");
       router.push(`/meetings/${data.meetingId}`);
+      router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Something went wrong");
     } finally {

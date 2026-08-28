@@ -100,6 +100,7 @@ export function Recorder({
 
       toast.success("Recording processed");
       router.push(`/meetings/${data.meetingId}`);
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
