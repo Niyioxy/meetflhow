@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
 import { upload } from "@vercel/blob/client";
 import { useMediaRecorder } from "@/hooks/use-media-recorder";
 import { useWorkspace } from "@/components/providers/workspace-provider";
@@ -18,7 +19,7 @@ import { ShareWithWorkspaceToggle } from "@/components/upload/share-with-workspa
 import { ALLOWED_CONTENT_TYPES } from "@/lib/organization-types";
 import type { OrganizationType } from "@/db/schema";
 import { cn } from "@/lib/utils";
-import { Mic, Pause, Play, Square, Download, Loader2, Sparkles, RotateCcw } from "lucide-react";
+import { Mic, Pause, Play, Square, Download, Loader2, Sparkles, RotateCcw, History } from "lucide-react";
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60)
@@ -36,8 +37,21 @@ export function Recorder({
   initialPlatform?: string;
 } = {}) {
   const router = useRouter();
-  const { status, seconds, audioBlob, stream, error, start, pause, resume, stop, reset } =
-    useMediaRecorder();
+  const {
+    status,
+    seconds,
+    audioBlob,
+    stream,
+    error,
+    start,
+    pause,
+    resume,
+    stop,
+    reset,
+    restorableDraft,
+    restoreDraft,
+    discardDraft,
+  } = useMediaRecorder();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const allowedContentTypes =
     ALLOWED_CONTENT_TYPES[(activeWorkspace?.organization_type as OrganizationType) ?? "general"];
@@ -99,6 +113,7 @@ export function Recorder({
       }
 
       toast.success("Recording processed");
+      discardDraft();
       router.push(`/meetings/${data.meetingId}`);
       router.refresh();
     } catch (err) {
@@ -127,6 +142,29 @@ export function Recorder({
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         {error && <p className="text-sm text-destructive">{error}</p>}
+
+        {restorableDraft && (
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+            <div className="flex items-start gap-3">
+              <History className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <div>
+                <p className="text-sm font-medium">Unsent recording found</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatTime(restorableDraft.seconds)} recorded{" "}
+                  {formatDistanceToNow(restorableDraft.savedAt, { addSuffix: true })} — never uploaded.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={discardDraft}>
+                Discard
+              </Button>
+              <Button size="sm" onClick={restoreDraft}>
+                Restore
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col items-center gap-4 rounded-[var(--radius-lg)] border border-border bg-[var(--bg-surface)] py-12">
           <button
