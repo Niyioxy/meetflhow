@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { MeetingsList } from "@/components/dashboard/meetings-list";
 import { TodaysMeetings } from "@/components/dashboard/todays-meetings";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { StartCallButton } from "@/components/call/start-call-button";
 import { Mic, UploadCloud, Video, ListChecks, CheckCircle2, Clock } from "lucide-react";
 
 function getGreeting() {
@@ -66,6 +67,7 @@ export default async function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <StartCallButton />
           <Button variant="outline" asChild>
             <Link href="/record">
               <Mic className="mr-2 h-4 w-4" />

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { WorkspaceSettings } from "@/components/workspace/workspace-settings";
 
 export default function WorkspaceSettingsPage() {
@@ -7,7 +8,9 @@ export default function WorkspaceSettingsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Workspace</h1>
         <p className="text-sm text-muted-foreground">Manage members, roles, and invites.</p>
       </div>
-      <WorkspaceSettings />
+      <Suspense>
+        <WorkspaceSettings />
+      </Suspense>
     </div>
   );
 }

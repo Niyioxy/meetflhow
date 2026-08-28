@@ -5,6 +5,7 @@ import { scheduledMeetings, scheduledMeetingPlatformEnum } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { deleteCalendarEvent, updateCalendarEvent } from "@/lib/google/calendar";
+import { deleteTeamsMeeting, updateTeamsMeeting } from "@/lib/microsoft/calendar";
 
 const bodySchema = z.object({
   title: z.string().min(1).optional(),
@@ -55,6 +56,16 @@ export async function PATCH(
     });
   }
 
+  if (existing.microsoftEventId) {
+    await updateTeamsMeeting(session.user.id, existing.microsoftEventId, {
+      title: update.title ?? existing.title,
+      notes: update.notes ?? existing.notes,
+      startTime: scheduledAt,
+      durationMinutes,
+      attendees: update.attendees ?? existing.attendees,
+    });
+  }
+
   const [updated] = await db
     .update(scheduledMeetings)
     .set({
@@ -84,6 +95,10 @@ export async function DELETE(
 
   if (existing.googleEventId) {
     await deleteCalendarEvent(session.user.id, existing.googleEventId);
+  }
+
+  if (existing.microsoftEventId) {
+    await deleteTeamsMeeting(session.user.id, existing.microsoftEventId);
   }
 
   await db

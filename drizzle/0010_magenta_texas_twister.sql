@@ -1,0 +1,1 @@
+ALTER TABLE "workspaces" ADD COLUMN "organization_type" text DEFAULT 'general' NOT NULL;

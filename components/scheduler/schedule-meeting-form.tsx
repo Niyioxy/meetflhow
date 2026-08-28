@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +42,7 @@ export function ScheduleMeetingForm({
   initialDate?: string;
 }) {
   const router = useRouter();
+  const { activeWorkspaceId } = useWorkspace();
   const isEditing = Boolean(initialData);
 
   const initial = initialData ? new Date(initialData.scheduledAt) : initialDate ? new Date(initialDate) : null;
@@ -66,6 +68,10 @@ export function ScheduleMeetingForm({
       toast.error("Title, date and time are required");
       return;
     }
+    if (platform === "MeetFlhow Audio" && !activeWorkspaceId) {
+      toast.error("Select a workspace first to schedule an in-app call");
+      return;
+    }
 
     const scheduledAt = new Date(`${date}T${time}`);
 
@@ -83,6 +89,7 @@ export function ScheduleMeetingForm({
             durationMinutes,
             attendees: attendeeList,
             notes: notes || null,
+            ...(platform === "MeetFlhow Audio" ? { workspaceId: activeWorkspaceId } : {}),
           }),
         }
       );

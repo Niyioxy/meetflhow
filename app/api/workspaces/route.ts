@@ -3,8 +3,12 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { createWorkspace, listUserWorkspaces } from "@/lib/workspaces";
 import { workspaceErrorResponse } from "@/lib/workspace-auth";
+import { organizationTypeEnum } from "@/db/schema";
 
-const bodySchema = z.object({ name: z.string().trim().min(1).max(80) });
+const bodySchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  organizationType: z.enum(organizationTypeEnum).optional(),
+});
 
 export async function GET() {
   const session = await auth();
@@ -29,7 +33,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const workspace = await createWorkspace(session.user.id, parsed.data.name);
+    const workspace = await createWorkspace(session.user.id, parsed.data.name, parsed.data.organizationType);
     return NextResponse.json({ workspace }, { status: 201 });
   } catch (error) {
     return workspaceErrorResponse(error);

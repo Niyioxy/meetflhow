@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
@@ -18,6 +19,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { RoleBadge } from "@/components/workspace/role-badge";
+import { OrganizationTypeSelect } from "@/components/workspace/organization-type-select";
+import { BillingCard } from "@/components/workspace/billing-card";
 import { workspaceRoleEnum } from "@/db/schema";
 import { roleAtLeast } from "@/lib/workspace-roles";
 import type { WorkspaceDetail } from "@/types/workspace";
@@ -26,10 +29,13 @@ const INVITABLE_ROLES = workspaceRoleEnum.filter((r) => r !== "owner");
 
 export function WorkspaceSettings() {
   const { activeWorkspaceId, workspaces, refresh } = useWorkspace();
+  const searchParams = useSearchParams();
   const [detail, setDetail] = useState<WorkspaceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [organizationType, setOrganizationType] = useState("general");
+  const [savingOrgType, setSavingOrgType] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<(typeof INVITABLE_ROLES)[number]>("member");
   const [inviting, setInviting] = useState(false);
@@ -49,6 +55,7 @@ export function WorkspaceSettings() {
       const data = await res.json();
       setDetail(data.workspace);
       setName(data.workspace.name);
+      setOrganizationType(data.workspace.organization_type);
     } catch {
       toast.error("Failed to load workspace");
     } finally {
@@ -60,6 +67,13 @@ export function WorkspaceSettings() {
     loadDetail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeWorkspaceId]);
+
+  useEffect(() => {
+    const billing = searchParams.get("billing");
+    if (billing === "success") toast.success("Subscription active — welcome to Team!");
+    if (billing === "cancelled") toast("Checkout cancelled");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleRename() {
     if (!detail || !name.trim() || name === detail.name) return;
@@ -77,6 +91,27 @@ export function WorkspaceSettings() {
       toast.error("Failed to rename workspace");
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function handleOrganizationTypeChange(value: string) {
+    if (!detail || value === detail.organization_type) return;
+    setOrganizationType(value);
+    setSavingOrgType(true);
+    try {
+      const res = await fetch(`/api/workspaces/${detail.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationType: value }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Organization type updated");
+      await Promise.all([loadDetail(), refresh()]);
+    } catch {
+      toast.error("Failed to update organization type");
+      setOrganizationType(detail.organization_type);
+    } finally {
+      setSavingOrgType(false);
     }
   }
 
@@ -197,6 +232,28 @@ export function WorkspaceSettings() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Organization type</CardTitle>
+          <CardDescription>
+            Restricts which content types (Meeting/Training/Sermon/Podcast) this workspace can record.
+            &ldquo;General&rdquo; allows all of them.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center gap-2">
+          <div className="w-full max-w-xs">
+            <OrganizationTypeSelect
+              value={organizationType}
+              onChange={handleOrganizationTypeChange}
+              disabled={!canManage}
+            />
+          </div>
+          {savingOrgType && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+        </CardContent>
+      </Card>
+
+      <BillingCard workspaceId={detail.id} plan={detail.plan} isOwner={isOwner} />
 
       {canManage && (
         <Card>

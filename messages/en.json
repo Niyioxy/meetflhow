@@ -46,6 +46,8 @@
     "manageIntegrations": "Manage Integrations",
     "googleCalendar": "Google Calendar",
     "googleCalendarDescription": "Connect your Google account to sync scheduled meetings and auto-generate Google Meet links.",
+    "microsoftTeams": "Microsoft Teams",
+    "microsoftTeamsDescription": "Connect your Microsoft account to sync scheduled meetings and auto-generate Microsoft Teams links.",
     "connected": "Connected",
     "notConnected": "Not connected",
     "account": "Account",
@@ -59,6 +61,7 @@
     "actionItems": "Action items",
     "transcript": "Transcript",
     "processingError": "Something went wrong while processing this meeting. Try uploading it again.",
+    "retryProcessing": "Retry",
     "translate": "Translate",
     "translating": "Translating...",
     "translatedNotice": "Translated by MeetFlhow AI — may contain errors"

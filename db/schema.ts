@@ -83,6 +83,12 @@ export const verificationTokens = pgTable(
 export const workspacePlanEnum = ["free", "team"] as const;
 export type WorkspacePlan = (typeof workspacePlanEnum)[number];
 
+export const subscriptionStatusEnum = ["active", "past_due", "canceled"] as const;
+export type SubscriptionStatus = (typeof subscriptionStatusEnum)[number];
+
+export const organizationTypeEnum = ["general", "corporate", "church", "podcast"] as const;
+export type OrganizationType = (typeof organizationTypeEnum)[number];
+
 export const workspaces = pgTable("workspaces", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
@@ -91,7 +97,11 @@ export const workspaces = pgTable("workspaces", {
     .notNull()
     .references(() => users.id),
   plan: text("plan").$type<WorkspacePlan>().notNull().default("free"),
+  organizationType: text("organization_type").$type<OrganizationType>().notNull().default("general"),
   avatarColor: text("avatar_color"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  subscriptionStatus: text("subscription_status").$type<SubscriptionStatus>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -161,7 +171,30 @@ export const meetings = pgTable("meetings", {
   attendeeSalaries: jsonb("attendee_salaries").$type<AttendeeSalary[]>(),
   calculatedCost: jsonb("calculated_cost").$type<CalculatedCost>(),
   notionPageId: text("notion_page_id"),
+  // Transient handoff pointer to the raw audio in Vercel Blob — only ever
+  // non-null between upload and successful transcription (cleared once
+  // process-transcript deletes the blob). Kept so a failed transcription
+  // can be retried without losing the recording.
+  blobUrl: text("blob_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const callRoomStatusEnum = ["active", "ended"] as const;
+export type CallRoomStatus = (typeof callRoomStatusEnum)[number];
+
+export const callRooms = pgTable("call_rooms", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id),
+  dailyRoomName: text("daily_room_name").notNull().unique(),
+  status: text("status").$type<CallRoomStatus>().notNull().default("active"),
+  meetingId: uuid("meeting_id").references(() => meetings.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  endedAt: timestamp("ended_at"),
 });
 
 export const speakerIdentificationMethodEnum = [
@@ -361,6 +394,7 @@ export const scheduledMeetingPlatformEnum = [
   "Google Meet",
   "Microsoft Teams",
   "Zoom",
+  "MeetFlhow Audio",
 ] as const;
 export type ScheduledMeetingPlatform =
   (typeof scheduledMeetingPlatformEnum)[number];
@@ -379,6 +413,10 @@ export const scheduledMeetings = pgTable("scheduled_meetings", {
   notes: text("notes"),
   googleEventId: text("google_event_id"),
   microsoftEventId: text("microsoft_event_id"),
+  // Only set when platform is "MeetFlhow Audio" — the workspace whose members
+  // are allowed to join, and the (lazily-created, on first join) call room.
+  workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
+  callRoomId: uuid("call_room_id").references(() => callRooms.id, { onDelete: "set null" }),
   reminderSentAt: timestamp("reminder_sent_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -642,6 +680,8 @@ export const meetingSharesRelations = relations(meetingShares, ({ one }) => ({
 
 export const scheduledMeetingsRelations = relations(scheduledMeetings, ({ one }) => ({
   user: one(users, { fields: [scheduledMeetings.userId], references: [users.id] }),
+  workspace: one(workspaces, { fields: [scheduledMeetings.workspaceId], references: [workspaces.id] }),
+  callRoom: one(callRooms, { fields: [scheduledMeetings.callRoomId], references: [callRooms.id] }),
 }));
 
 // A pending or completed "propose open slots, invitee picks one" request.
@@ -678,6 +718,12 @@ export const bookingRequestsRelations = relations(bookingRequests, ({ one }) => 
     fields: [bookingRequests.scheduledMeetingId],
     references: [scheduledMeetings.id],
   }),
+}));
+
+export const callRoomsRelations = relations(callRooms, ({ one }) => ({
+  workspace: one(workspaces, { fields: [callRooms.workspaceId], references: [workspaces.id] }),
+  creator: one(users, { fields: [callRooms.createdBy], references: [users.id] }),
+  meeting: one(meetings, { fields: [callRooms.meetingId], references: [meetings.id] }),
 }));
 
 export const tasksRelations = relations(tasks, ({ one }) => ({

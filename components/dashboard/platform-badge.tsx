@@ -7,6 +7,7 @@ const PLATFORM_CLASS: Record<string, string> = {
   teams: "bg-[rgba(168,85,247,0.1)] text-[#C084FC] border-[rgba(168,85,247,0.2)]",
   "microsoft teams": "bg-[rgba(168,85,247,0.1)] text-[#C084FC] border-[rgba(168,85,247,0.2)]",
   zoom: "bg-[rgba(37,99,235,0.1)] text-[#60A5FA] border-[rgba(37,99,235,0.2)]",
+  "meetflhow audio": "bg-[rgba(244,63,94,0.1)] text-[#FB7185] border-[rgba(244,63,94,0.2)]",
 };
 
 const DEFAULT_CLASS = "bg-[rgba(148,163,184,0.1)] text-[var(--text-secondary)] border-[rgba(148,163,184,0.2)]";

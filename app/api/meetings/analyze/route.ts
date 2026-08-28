@@ -3,7 +3,9 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { meetings, transcripts, contentTypeEnum } from "@/db/schema";
 import { runAllMeetingAnalyses, wordCount } from "@/lib/meetings";
-import { getWorkspaceMember } from "@/lib/workspace-auth";
+import { getWorkspaceMember, getWorkspaceOrThrow } from "@/lib/workspace-auth";
+import { isContentTypeAllowed } from "@/lib/organization-types";
+import { canRecordMeeting, FREE_TIER_MONTHLY_RECORDINGS } from "@/lib/billing";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -70,6 +72,24 @@ export async function POST(req: Request) {
         { error: "transcriptText is required when meetingId is not provided" },
         { status: 400 }
       );
+    }
+
+    if (workspaceId) {
+      const workspace = await getWorkspaceOrThrow(workspaceId);
+      if (!isContentTypeAllowed(workspace.organizationType, contentType ?? "meeting")) {
+        return NextResponse.json(
+          { error: `This workspace only supports ${workspace.organizationType} recordings` },
+          { status: 403 }
+        );
+      }
+      if (!(await canRecordMeeting(workspace))) {
+        return NextResponse.json(
+          {
+            error: `Free plan limit reached (${FREE_TIER_MONTHLY_RECORDINGS} recordings/month) — upgrade to Team for unlimited recordings.`,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const [meeting] = await db

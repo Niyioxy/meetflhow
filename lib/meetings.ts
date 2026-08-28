@@ -14,6 +14,26 @@ import type { TranscriptUtterance } from "@/lib/deepgram/transcribe";
 import type { VoiceMatch } from "@/lib/voice-identification";
 import { eq } from "drizzle-orm";
 
+const SUPPLEMENTARY_TIMEOUT_MS = 40_000;
+
+/**
+ * Races a promise against a timeout. Used to bound each Gemini call inside
+ * runAllMeetingAnalyses — this function runs inside a single serverless
+ * invocation with a hard platform time limit (60s), so if a call hangs, we
+ * need it to fail cleanly (and let the meeting be marked failed) well
+ * before the platform kills the whole invocation mid-flight, which would
+ * otherwise leave the meeting stuck in "analyzing" forever with no way to
+ * recover on its own.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 function formatTimestamp(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -277,16 +297,27 @@ export async function runAllMeetingAnalyses(
     });
 
   const [coreOk] = await Promise.all([
-    runMeetingAnalysis(meetingId, transcriptText, contentType)
+    withTimeout(
+      runMeetingAnalysis(meetingId, transcriptText, contentType),
+      SUPPLEMENTARY_TIMEOUT_MS,
+      "Meeting analysis"
+    )
       .then(() => true)
       .catch((error) => {
         console.error("Meeting analysis failed", error);
         return false;
       }),
-    // Talk-time/decision-rate scoring only makes sense for multi-party meetings.
-    contentType === "meeting" ? settle(runMeetingCoach(meetingId, transcriptText)) : Promise.resolve(null),
-    settle(runSpeakerIdentification(meetingId, transcriptText, attendees, utterances, voiceMatches)),
-    settle(runSentimentTimeline(meetingId, transcriptText)),
+    settle(withTimeout(runMeetingCoach(meetingId, transcriptText), SUPPLEMENTARY_TIMEOUT_MS, "Meeting coach")),
+    settle(
+      withTimeout(
+        runSpeakerIdentification(meetingId, transcriptText, attendees, utterances, voiceMatches),
+        SUPPLEMENTARY_TIMEOUT_MS,
+        "Speaker identification"
+      )
+    ),
+    settle(
+      withTimeout(runSentimentTimeline(meetingId, transcriptText), SUPPLEMENTARY_TIMEOUT_MS, "Sentiment timeline")
+    ),
   ]);
 
   const [updatedMeeting] = await db

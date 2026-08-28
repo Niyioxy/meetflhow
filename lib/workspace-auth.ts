@@ -27,6 +27,14 @@ export function requireRole(member: { role: WorkspaceRole }, minRole: WorkspaceR
   }
 }
 
+export async function getWorkspaceOrThrow(workspaceId: string) {
+  const workspace = await db.query.workspaces.findFirst({
+    where: (w, { eq }) => eq(w.id, workspaceId),
+  });
+  if (!workspace) throw new WorkspaceAccessError("Workspace not found", 404);
+  return workspace;
+}
+
 /** Maps a WorkspaceAccessError (or unknown error) to a JSON error response. */
 export function workspaceErrorResponse(error: unknown) {
   if (error instanceof WorkspaceAccessError) {

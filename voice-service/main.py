@@ -4,7 +4,7 @@ import tempfile
 
 import soundfile as sf
 import torch
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, Header, HTTPException, UploadFile
 from speechbrain.inference.speaker import EncoderClassifier
 
 app = FastAPI()
@@ -15,6 +15,7 @@ model = EncoderClassifier.from_hparams(
 )
 
 TARGET_SAMPLE_RATE = 16000
+SERVICE_SECRET = os.environ.get("VOICE_SERVICE_SECRET")
 
 
 @app.get("/health")
@@ -23,7 +24,10 @@ def health():
 
 
 @app.post("/embed")
-async def embed(file: UploadFile):
+async def embed(file: UploadFile, authorization: str = Header(default="")):
+    if SERVICE_SECRET and authorization != f"Bearer {SERVICE_SECRET}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename or "")[1] or ".bin") as raw_tmp:
         raw_tmp.write(await file.read())
         raw_path = raw_tmp.name

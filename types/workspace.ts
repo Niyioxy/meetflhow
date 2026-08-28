@@ -1,12 +1,13 @@
-import type { WorkspaceRole, WorkspacePlan } from "@/db/schema";
+import type { WorkspaceRole, WorkspacePlan, OrganizationType } from "@/db/schema";
 
-export type { WorkspaceRole, WorkspacePlan };
+export type { WorkspaceRole, WorkspacePlan, OrganizationType };
 
 export interface WorkspaceSummary {
   id: string;
   name: string;
   slug: string;
   plan: WorkspacePlan;
+  organization_type: OrganizationType;
   avatar_color: string | null;
   role: WorkspaceRole;
 }

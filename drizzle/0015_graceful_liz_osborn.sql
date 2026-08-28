@@ -1,0 +1,4 @@
+ALTER TABLE "scheduled_meetings" ADD COLUMN "workspace_id" uuid;--> statement-breakpoint
+ALTER TABLE "scheduled_meetings" ADD COLUMN "call_room_id" uuid;--> statement-breakpoint
+ALTER TABLE "scheduled_meetings" ADD CONSTRAINT "scheduled_meetings_workspace_id_workspaces_id_fk" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "scheduled_meetings" ADD CONSTRAINT "scheduled_meetings_call_room_id_call_rooms_id_fk" FOREIGN KEY ("call_room_id") REFERENCES "public"."call_rooms"("id") ON DELETE set null ON UPDATE no action;

@@ -46,6 +46,8 @@
     "manageIntegrations": "管理集成",
     "googleCalendar": "Google 日历",
     "googleCalendarDescription": "连接您的 Google 帐户以同步已安排的会议并自动生成 Google Meet 链接。",
+    "microsoftTeams": "Microsoft Teams",
+    "microsoftTeamsDescription": "连接您的 Microsoft 帐户以同步已安排的会议并自动生成 Microsoft Teams 链接。",
     "connected": "已连接",
     "notConnected": "未连接",
     "account": "账户",
@@ -59,6 +61,7 @@
     "actionItems": "行动项",
     "transcript": "转录文本",
     "processingError": "处理此会议时出错。请重新上传。",
+    "retryProcessing": "重试",
     "translate": "翻译",
     "translating": "翻译中...",
     "translatedNotice": "由 MeetFlhow AI 翻译 — 可能包含错误"

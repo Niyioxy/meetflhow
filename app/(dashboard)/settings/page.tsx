@@ -2,17 +2,22 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { auth, signOut } from "@/auth";
 import { isCalendarConnected } from "@/lib/google/calendar";
+import { isTeamsConnected } from "@/lib/microsoft/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConnectGoogleButton } from "@/components/settings/connect-google-button";
+import { ConnectMicrosoftButton } from "@/components/settings/connect-microsoft-button";
 import { VoiceProfileCard } from "@/components/settings/voice-profile-card";
 
 export default async function SettingsPage() {
   const session = await auth();
   const user = session!.user;
-  const connected = await isCalendarConnected(user.id);
+  const [connected, teamsConnected] = await Promise.all([
+    isCalendarConnected(user.id),
+    isTeamsConnected(user.id),
+  ]);
   const t = await getTranslations("settings");
 
   return (
@@ -72,6 +77,19 @@ export default async function SettingsPage() {
             {connected ? t("connected") : t("notConnected")}
           </Badge>
           <ConnectGoogleButton connected={connected} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("microsoftTeams")}</CardTitle>
+          <CardDescription>{t("microsoftTeamsDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <Badge variant={teamsConnected ? "default" : "secondary"}>
+            {teamsConnected ? t("connected") : t("notConnected")}
+          </Badge>
+          <ConnectMicrosoftButton connected={teamsConnected} />
         </CardContent>
       </Card>
 

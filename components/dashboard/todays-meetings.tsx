@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlatformBadge } from "@/components/dashboard/platform-badge";
+import { JoinInAppCallButton } from "@/components/scheduler/join-in-app-call-button";
 import { Video } from "lucide-react";
 
 export interface TodaysMeeting {
@@ -39,16 +40,20 @@ export function TodaysMeetings({ meetings }: { meetings: TodaysMeeting[] }) {
               <span className="font-medium">{m.title}</span>
               <PlatformBadge platform={m.platform} />
             </div>
-            <Button size="sm" asChild>
-              <Link
-                href={`/record?title=${encodeURIComponent(m.title)}&platform=${encodeURIComponent(
-                  PLATFORM_SLUGS[m.platform] ?? "other"
-                )}`}
-              >
-                <Video className="mr-2 h-4 w-4" />
-                Start & Record
-              </Link>
-            </Button>
+            {m.platform === "MeetFlhow Audio" ? (
+              <JoinInAppCallButton scheduledMeetingId={m.id} size="sm" />
+            ) : (
+              <Button size="sm" asChild>
+                <Link
+                  href={`/record?title=${encodeURIComponent(m.title)}&platform=${encodeURIComponent(
+                    PLATFORM_SLUGS[m.platform] ?? "other"
+                  )}`}
+                >
+                  <Video className="mr-2 h-4 w-4" />
+                  Start & Record
+                </Link>
+              </Button>
+            )}
           </div>
         ))}
       </CardContent>

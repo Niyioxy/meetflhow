@@ -46,6 +46,8 @@
     "manageIntegrations": "Gérer les intégrations",
     "googleCalendar": "Google Agenda",
     "googleCalendarDescription": "Connectez votre compte Google pour synchroniser les réunions planifiées et générer automatiquement des liens Google Meet.",
+    "microsoftTeams": "Microsoft Teams",
+    "microsoftTeamsDescription": "Connectez votre compte Microsoft pour synchroniser les réunions planifiées et générer automatiquement des liens Microsoft Teams.",
     "connected": "Connecté",
     "notConnected": "Non connecté",
     "account": "Compte",
@@ -59,6 +61,7 @@
     "actionItems": "Actions",
     "transcript": "Transcription",
     "processingError": "Une erreur s'est produite lors du traitement de cette réunion. Réessayez de la télécharger.",
+    "retryProcessing": "Réessayer",
     "translate": "Traduire",
     "translating": "Traduction en cours...",
     "translatedNotice": "Traduit par MeetFlhow AI — peut contenir des erreurs"

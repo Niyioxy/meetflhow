@@ -17,6 +17,9 @@ export async function getEmbedding(audioBuffer: Buffer, filename = "audio.wav"):
   try {
     res = await fetch(`${getServiceUrl()}/embed`, {
       method: "POST",
+      headers: process.env.VOICE_SERVICE_SECRET
+        ? { Authorization: `Bearer ${process.env.VOICE_SERVICE_SECRET}` }
+        : undefined,
       body: formData,
       signal: AbortSignal.timeout(EMBED_TIMEOUT_MS),
     });

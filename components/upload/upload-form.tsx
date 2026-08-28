@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { upload } from "@vercel/blob/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,31 +15,15 @@ import { PlatformSelect } from "@/components/upload/platform-select";
 import { ContentTypeSelect } from "@/components/upload/content-type-select";
 import { Loader2, Sparkles } from "lucide-react";
 import { useWorkspace } from "@/components/providers/workspace-provider";
-import { Switch } from "@/components/ui/switch";
-
-function ShareWithWorkspaceToggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  const { workspaces } = useWorkspace();
-  if (workspaces.length === 0) return null;
-
-  return (
-    <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
-      <Label htmlFor="share-with-workspace" className="text-sm font-normal">
-        Share with workspace
-      </Label>
-      <Switch id="share-with-workspace" checked={checked} onCheckedChange={onChange} />
-    </div>
-  );
-}
+import { ShareWithWorkspaceToggle } from "@/components/upload/share-with-workspace-toggle";
+import { ALLOWED_CONTENT_TYPES } from "@/lib/organization-types";
+import type { OrganizationType } from "@/db/schema";
 
 export function UploadForm() {
   const router = useRouter();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const allowedContentTypes =
+    ALLOWED_CONTENT_TYPES[(activeWorkspace?.organization_type as OrganizationType) ?? "general"];
 
   const [file, setFile] = useState<File | null>(null);
   const [fileTitle, setFileTitle] = useState("");
@@ -54,6 +39,19 @@ export function UploadForm() {
   const [transcriptText, setTranscriptText] = useState("");
   const [pasteSubmitting, setPasteSubmitting] = useState(false);
 
+  // If the active workspace changes to one that restricts content types,
+  // fall back to whatever's still allowed rather than submitting a type
+  // the server will reject.
+  useEffect(() => {
+    if (!allowedContentTypes.includes(fileContentType as (typeof allowedContentTypes)[number])) {
+      setFileContentType(allowedContentTypes[0]);
+    }
+    if (!allowedContentTypes.includes(pastedContentType as (typeof allowedContentTypes)[number])) {
+      setPastedContentType(allowedContentTypes[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedContentTypes]);
+
   async function handleFileSubmit() {
     if (!file) {
       toast.error("Select an audio or video file first");
@@ -61,19 +59,24 @@ export function UploadForm() {
     }
     setFileSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("title", fileTitle || file.name);
-      formData.append("platform", filePlatform);
-      formData.append("contentType", fileContentType);
-      if (activeWorkspaceId) {
-        formData.append("workspaceId", activeWorkspaceId);
-        formData.append("sharedWithWorkspace", String(fileShared));
-      }
+      const blob = await upload(`meeting-uploads/${Date.now()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/meetings/upload-token",
+        multipart: true,
+      });
 
       const res = await fetch("/api/meetings/upload", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blobUrl: blob.url,
+          title: fileTitle || file.name,
+          platform: filePlatform,
+          contentType: fileContentType,
+          ...(activeWorkspaceId
+            ? { workspaceId: activeWorkspaceId, sharedWithWorkspace: fileShared }
+            : {}),
+        }),
       });
       const data = await res.json();
 
@@ -159,7 +162,11 @@ export function UploadForm() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Content type</Label>
-                <ContentTypeSelect value={fileContentType} onChange={setFileContentType} />
+                <ContentTypeSelect
+                  value={fileContentType}
+                  onChange={setFileContentType}
+                  allowedTypes={allowedContentTypes}
+                />
               </div>
             </div>
 
@@ -207,7 +214,11 @@ export function UploadForm() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Content type</Label>
-                <ContentTypeSelect value={pastedContentType} onChange={setPastedContentType} />
+                <ContentTypeSelect
+                  value={pastedContentType}
+                  onChange={setPastedContentType}
+                  allowedTypes={allowedContentTypes}
+                />
               </div>
             </div>
 

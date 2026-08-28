@@ -9,6 +9,7 @@ import { PlatformBadge } from "@/components/dashboard/platform-badge";
 import { SentimentBadge } from "@/components/meeting/sentiment-badge";
 import { ActionItemsCard } from "@/components/meeting/action-items-card";
 import { ProcessingBanner } from "@/components/meeting/processing-banner";
+import { RetryButton } from "@/components/meeting/retry-button";
 import { MeetingCoachCard } from "@/components/meeting/meeting-coach-card";
 import { SentimentTimelineCard } from "@/components/meeting/sentiment-timeline-card";
 import { TranscriptCard } from "@/components/meeting/transcript-card";
@@ -65,8 +66,9 @@ export default async function MeetingDetailPage({
 
       {meeting.status === "failed" && (
         <Card className="border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.08)]">
-          <CardContent className="py-6 text-[#F87171]">
-            {t("processingError")}
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 py-6">
+            <p className="text-[#F87171]">{t("processingError")}</p>
+            <RetryButton meetingId={meeting.id} />
           </CardContent>
         </Card>
       )}
@@ -128,7 +130,7 @@ export default async function MeetingDetailPage({
           </Card>
         )}
 
-        {meeting.status === "ready" && meeting.contentType === "meeting" && (
+        {meeting.status === "ready" && (
           <ActionItemsCard
             meetingTitle={meeting.title}
             workspaceId={meeting.workspaceId}
@@ -182,7 +184,7 @@ export default async function MeetingDetailPage({
         />
       )}
 
-      {meeting.status === "ready" && meeting.transcript && meeting.contentType === "meeting" && (
+      {meeting.status === "ready" && meeting.transcript && (
         <MeetingCoachCard
           meetingId={meeting.id}
           initialScore={meeting.analysis?.meetingScore ?? null}

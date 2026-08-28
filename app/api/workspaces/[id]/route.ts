@@ -3,8 +3,12 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { deleteWorkspace, getWorkspaceDetail, updateWorkspace } from "@/lib/workspaces";
 import { workspaceErrorResponse } from "@/lib/workspace-auth";
+import { organizationTypeEnum } from "@/db/schema";
 
-const patchSchema = z.object({ name: z.string().trim().min(1).max(80) });
+const patchSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  organizationType: z.enum(organizationTypeEnum).optional(),
+});
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await auth();
@@ -29,7 +33,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const json = await req.json().catch(() => null);
   const parsed = patchSchema.safeParse(json);
   if (!parsed.success) {
-    return NextResponse.json({ error: "A workspace name is required" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
   try {

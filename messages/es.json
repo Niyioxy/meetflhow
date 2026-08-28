@@ -46,6 +46,8 @@
     "manageIntegrations": "Administrar integraciones",
     "googleCalendar": "Google Calendar",
     "googleCalendarDescription": "Conecta tu cuenta de Google para sincronizar las reuniones programadas y generar enlaces de Google Meet automáticamente.",
+    "microsoftTeams": "Microsoft Teams",
+    "microsoftTeamsDescription": "Conecta tu cuenta de Microsoft para sincronizar las reuniones programadas y generar enlaces de Microsoft Teams automáticamente.",
     "connected": "Conectado",
     "notConnected": "No conectado",
     "account": "Cuenta",
@@ -59,6 +61,7 @@
     "actionItems": "Tareas",
     "transcript": "Transcripción",
     "processingError": "Ocurrió un error al procesar esta reunión. Intenta subirla de nuevo.",
+    "retryProcessing": "Reintentar",
     "translate": "Traducir",
     "translating": "Traduciendo...",
     "translatedNotice": "Traducido por MeetFlhow AI — puede contener errores"

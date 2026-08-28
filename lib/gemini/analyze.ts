@@ -108,6 +108,9 @@ export async function analyzeTranscript(
       responseMimeType: "application/json",
       responseSchema,
       temperature: 0.2,
+      // Small non-zero thinking budget: fast, but leaves room to reason on
+      // trickier transcripts rather than cutting reasoning off entirely.
+      thinkingConfig: { thinkingBudget: 512 },
     },
   });
 

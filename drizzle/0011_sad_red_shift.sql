@@ -1,0 +1,1 @@
+ALTER TABLE "scheduled_meetings" ADD COLUMN "microsoft_event_id" text;

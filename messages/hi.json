@@ -46,6 +46,8 @@
     "manageIntegrations": "एकीकरण प्रबंधित करें",
     "googleCalendar": "Google कैलेंडर",
     "googleCalendarDescription": "शेड्यूल की गई मीटिंग्स को सिंक करने और Google Meet लिंक स्वतः जनरेट करने के लिए अपना Google खाता कनेक्ट करें।",
+    "microsoftTeams": "Microsoft Teams",
+    "microsoftTeamsDescription": "शेड्यूल की गई मीटिंग्स को सिंक करने और Microsoft Teams लिंक स्वतः जनरेट करने के लिए अपना Microsoft खाता कनेक्ट करें।",
     "connected": "कनेक्टेड",
     "notConnected": "कनेक्ट नहीं है",
     "account": "खाता",
@@ -59,6 +61,7 @@
     "actionItems": "कार्य-मद",
     "transcript": "प्रतिलेख",
     "processingError": "इस मीटिंग को प्रोसेस करते समय कुछ गलत हो गया। कृपया इसे फिर से अपलोड करें।",
+    "retryProcessing": "पुनः प्रयास करें",
     "translate": "अनुवाद करें",
     "translating": "अनुवाद हो रहा है...",
     "translatedNotice": "MeetFlhow AI द्वारा अनूदित — इसमें त्रुटियां हो सकती हैं"

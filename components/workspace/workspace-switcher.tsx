@@ -21,7 +21,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { OrganizationTypeSelect } from "@/components/workspace/organization-type-select";
 
 function WorkspaceAvatar({ name, color, size = 24 }: { name: string; color: string | null; size?: number }) {
   return (
@@ -39,6 +41,7 @@ export function WorkspaceSwitcher({ compact = false }: { compact?: boolean }) {
   const { workspaces, activeWorkspace, setActiveWorkspaceId, refresh } = useWorkspace();
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
+  const [organizationType, setOrganizationType] = useState("general");
   const [creating, setCreating] = useState(false);
 
   async function handleCreate() {
@@ -48,7 +51,7 @@ export function WorkspaceSwitcher({ compact = false }: { compact?: boolean }) {
       const res = await fetch("/api/workspaces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, organizationType }),
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -57,6 +60,7 @@ export function WorkspaceSwitcher({ compact = false }: { compact?: boolean }) {
       toast.success(`${data.workspace.name} created`);
       setCreateOpen(false);
       setName("");
+      setOrganizationType("general");
     } catch {
       toast.error("Failed to create workspace");
     } finally {
@@ -80,6 +84,8 @@ export function WorkspaceSwitcher({ compact = false }: { compact?: boolean }) {
           onOpenChange={setCreateOpen}
           name={name}
           setName={setName}
+          organizationType={organizationType}
+          setOrganizationType={setOrganizationType}
           creating={creating}
           onCreate={handleCreate}
         />
@@ -128,6 +134,8 @@ export function WorkspaceSwitcher({ compact = false }: { compact?: boolean }) {
         onOpenChange={setCreateOpen}
         name={name}
         setName={setName}
+        organizationType={organizationType}
+        setOrganizationType={setOrganizationType}
         creating={creating}
         onCreate={handleCreate}
       />
@@ -140,6 +148,8 @@ function CreateWorkspaceDialog({
   onOpenChange,
   name,
   setName,
+  organizationType,
+  setOrganizationType,
   creating,
   onCreate,
 }: {
@@ -147,6 +157,8 @@ function CreateWorkspaceDialog({
   onOpenChange: (open: boolean) => void;
   name: string;
   setName: (name: string) => void;
+  organizationType: string;
+  setOrganizationType: (value: string) => void;
   creating: boolean;
   onCreate: () => void;
 }) {
@@ -163,6 +175,10 @@ function CreateWorkspaceDialog({
           autoFocus
           onKeyDown={(e) => e.key === "Enter" && onCreate()}
         />
+        <div className="flex flex-col gap-2">
+          <Label>Organization type</Label>
+          <OrganizationTypeSelect value={organizationType} onChange={setOrganizationType} />
+        </div>
         <DialogFooter>
           <Button onClick={onCreate} disabled={creating || !name.trim()}>
             Create

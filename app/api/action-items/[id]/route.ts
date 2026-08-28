@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { actionItems, actionItemStatusEnum, mentions } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { getResendClient } from "@/lib/resend/client";
+import { getEmailClient } from "@/lib/email/client";
 import { ActionItemAssignedEmail } from "@/lib/emails/action-item-assigned";
 import { triggerWebhooks } from "@/lib/webhooks";
 
@@ -36,7 +36,7 @@ async function notifyAssignee(
     const assignee = await db.query.users.findFirst({ where: (u, { eq }) => eq(u.id, assigneeUserId) });
     if (!assignee) return;
 
-    await getResendClient().emails.send({
+    await getEmailClient().emails.send({
       from: process.env.EMAIL_FROM || "MeetFlhow <reminders@meetflow.app>",
       to: [assignee.email],
       subject: `You've been assigned an action item in ${meeting.title}`,

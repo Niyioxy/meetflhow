@@ -2,7 +2,7 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
 import { mentions } from "@/db/schema";
 import type { MentionContextType } from "@/db/schema";
-import { getResendClient } from "@/lib/resend/client";
+import { getEmailClient } from "@/lib/email/client";
 import { MentionNotificationEmail } from "@/lib/emails/mention-notification";
 import type { MentionableMember, MentionView } from "@/types/mentions";
 
@@ -88,7 +88,7 @@ async function sendMentionEmail(
 ) {
   try {
     const url = meetingId ? `${process.env.NEXTAUTH_URL}/meetings/${meetingId}` : `${process.env.NEXTAUTH_URL}/dashboard`;
-    await getResendClient().emails.send({
+    await getEmailClient().emails.send({
       from: process.env.EMAIL_FROM || "MeetFlhow <reminders@meetflow.app>",
       to: [toEmail],
       subject: `${fromName} mentioned you in ${meetingTitle}`,

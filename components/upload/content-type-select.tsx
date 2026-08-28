@@ -18,17 +18,24 @@ export const CONTENT_TYPE_OPTIONS = [
 export function ContentTypeSelect({
   value,
   onChange,
+  allowedTypes,
 }: {
   value: string;
   onChange: (value: string) => void;
+  /** Restricts the visible options (e.g. by the active workspace's organization type). Defaults to all. */
+  allowedTypes?: readonly string[];
 }) {
+  const options = allowedTypes
+    ? CONTENT_TYPE_OPTIONS.filter((o) => allowedTypes.includes(o.value))
+    : CONTENT_TYPE_OPTIONS;
+
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger>
         <SelectValue placeholder="Content type" />
       </SelectTrigger>
       <SelectContent>
-        {CONTENT_TYPE_OPTIONS.map((option) => (
+        {options.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             {option.label}
           </SelectItem>

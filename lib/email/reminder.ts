@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { getResendClient } from "@/lib/resend/client";
+import { getEmailClient } from "@/lib/email/client";
 
 export async function sendMeetingReminderEmail({
   to,
@@ -16,7 +16,7 @@ export async function sendMeetingReminderEmail({
 }) {
   const time = format(scheduledAt, "MMM d, yyyy 'at' h:mm a");
 
-  await getResendClient().emails.send({
+  await getEmailClient().emails.send({
     from: process.env.EMAIL_FROM || "MeetFlhow <reminders@meetflow.app>",
     to,
     subject: `Reminder: "${title}" starts in 30 minutes`,

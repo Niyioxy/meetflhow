@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { transcriptComments, transcriptCommentReplies } from "@/db/schema";
 import { getMeetingDetail } from "@/lib/meetings";
 import { getWorkspaceMember, requireRole, WorkspaceAccessError } from "@/lib/workspace-auth";
-import { getResendClient } from "@/lib/resend/client";
+import { getEmailClient } from "@/lib/email/client";
 import { CommentNotificationEmail } from "@/lib/emails/comment-notification";
 import { createMentionsForContent } from "@/lib/mentions";
 import type { CommentReplyView, TranscriptCommentView } from "@/types/comments";
@@ -136,7 +136,7 @@ async function notifyMeetingOwner(
     ]);
     if (!owner) return;
 
-    await getResendClient().emails.send({
+    await getEmailClient().emails.send({
       from: process.env.EMAIL_FROM || "MeetFlhow <reminders@meetflow.app>",
       to: [owner.email],
       subject: `New comment on ${meetingTitle}`,

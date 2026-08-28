@@ -86,7 +86,10 @@ async function processTranscript(
     // Transient handoff only — delete now that Deepgram has consumed it.
     await del(blobUrl).catch((error) => console.error("Failed to delete transient audio blob", error));
 
-    await db.update(meetings).set({ status: "analyzing" }).where(eq(meetings.id, meetingId));
+    await db
+      .update(meetings)
+      .set({ status: "analyzing", blobUrl: null })
+      .where(eq(meetings.id, meetingId));
 
     await triggerInternalStep(`/api/meetings/${meetingId}/process-analysis`, {
       transcriptText: transcription.text,

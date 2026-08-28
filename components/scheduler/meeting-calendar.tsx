@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { PlatformBadge } from "@/components/dashboard/platform-badge";
+import { JoinInAppCallButton } from "@/components/scheduler/join-in-app-call-button";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
 const localizer = dateFnsLocalizer({
@@ -34,6 +35,10 @@ export interface CalendarMeeting {
   durationMinutes: number;
   meetLink: string | null;
   notes: string | null;
+}
+
+function isInAppCall(platform: string) {
+  return platform === "MeetFlhow Audio";
 }
 
 interface CalendarEvent {
@@ -105,15 +110,19 @@ export function MeetingCalendar({ meetings }: { meetings: CalendarMeeting[] }) {
               </DialogHeader>
               <div className="flex flex-col gap-2 text-sm">
                 <PlatformBadge platform={selected.platform} className="w-fit" />
-                {selected.meetLink && (
-                  <a
-                    href={selected.meetLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary underline"
-                  >
-                    Join meeting
-                  </a>
+                {isInAppCall(selected.platform) ? (
+                  <JoinInAppCallButton scheduledMeetingId={selected.id} size="sm" />
+                ) : (
+                  selected.meetLink && (
+                    <a
+                      href={selected.meetLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      Join meeting
+                    </a>
+                  )
                 )}
                 {selected.notes && <p className="text-muted-foreground">{selected.notes}</p>}
               </div>

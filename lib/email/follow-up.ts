@@ -1,4 +1,4 @@
-import { getResendClient } from "@/lib/resend/client";
+import { getEmailClient } from "@/lib/email/client";
 
 export async function sendFollowUpEmail({
   to,
@@ -11,7 +11,7 @@ export async function sendFollowUpEmail({
   subject: string;
   bodyHtml: string;
 }) {
-  await getResendClient().emails.send({
+  await getEmailClient().emails.send({
     from: process.env.EMAIL_FROM || "MeetFlhow <reminders@meetflow.app>",
     to,
     ...(replyTo ? { replyTo } : {}),

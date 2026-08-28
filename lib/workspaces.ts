@@ -1,11 +1,11 @@
 import { randomUUID } from "crypto";
 import { db } from "@/db";
 import { workspaces, workspaceMembers, workspaceInvites, meetings } from "@/db/schema";
-import type { WorkspaceRole } from "@/db/schema";
+import type { WorkspaceRole, OrganizationType } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { colorFromName } from "@/lib/avatar";
 import { getWorkspaceMember, requireRole, WorkspaceAccessError } from "@/lib/workspace-auth";
-import { getResendClient } from "@/lib/resend/client";
+import { getEmailClient } from "@/lib/email/client";
 import { WorkspaceInviteEmail } from "@/lib/emails/workspace-invite";
 import type {
   WorkspaceSummary,
@@ -43,11 +43,21 @@ export async function findWorkspaceByIdOrSlug(idOrSlug: string) {
     : db.query.workspaces.findFirst({ where: (w, { eq }) => eq(w.slug, idOrSlug) });
 }
 
-export async function createWorkspace(userId: string, name: string): Promise<WorkspaceSummary> {
+export async function createWorkspace(
+  userId: string,
+  name: string,
+  organizationType?: OrganizationType
+): Promise<WorkspaceSummary> {
   const slug = await uniqueSlug(name);
   const [workspace] = await db
     .insert(workspaces)
-    .values({ name, slug, ownerId: userId, avatarColor: colorFromName(name) })
+    .values({
+      name,
+      slug,
+      ownerId: userId,
+      avatarColor: colorFromName(name),
+      ...(organizationType ? { organizationType } : {}),
+    })
     .returning();
 
   await db.insert(workspaceMembers).values({ workspaceId: workspace.id, userId, role: "owner" });
@@ -57,6 +67,7 @@ export async function createWorkspace(userId: string, name: string): Promise<Wor
     name: workspace.name,
     slug: workspace.slug,
     plan: workspace.plan,
+    organization_type: workspace.organizationType,
     avatar_color: workspace.avatarColor,
     role: "owner",
   };
@@ -76,6 +87,7 @@ export async function listUserWorkspaces(userId: string): Promise<WorkspaceSumma
       name: r.workspace.name,
       slug: r.workspace.slug,
       plan: r.workspace.plan,
+      organization_type: r.workspace.organizationType,
       avatar_color: r.workspace.avatarColor,
       role: r.role,
     }));
@@ -103,6 +115,7 @@ export async function getWorkspaceDetail(idOrSlug: string, userId: string): Prom
     name: workspace.name,
     slug: workspace.slug,
     plan: workspace.plan,
+    organization_type: workspace.organizationType,
     avatar_color: workspace.avatarColor,
     role: member.role,
     owner_id: workspace.ownerId,
@@ -132,7 +145,7 @@ function toInviteView(i: typeof workspaceInvites.$inferSelect): WorkspaceInviteV
 export async function updateWorkspace(
   workspaceId: string,
   userId: string,
-  patch: { name?: string }
+  patch: { name?: string; organizationType?: OrganizationType }
 ): Promise<WorkspaceSummary> {
   const member = await getWorkspaceMember(userId, workspaceId);
   requireRole(member, "admin");
@@ -148,6 +161,7 @@ export async function updateWorkspace(
     name: updated.name,
     slug: updated.slug,
     plan: updated.plan,
+    organization_type: updated.organizationType,
     avatar_color: updated.avatarColor,
     role: member.role,
   };
@@ -237,7 +251,7 @@ export async function createInvite(
 
   const acceptUrl = `${process.env.NEXTAUTH_URL}/invite/${invite.token}`;
   try {
-    await getResendClient().emails.send({
+    await getEmailClient().emails.send({
       from: process.env.EMAIL_FROM || "MeetFlhow <reminders@meetflow.app>",
       to: [email],
       subject: `${inviterUser?.name ?? "Someone"} invited you to ${workspace.name} on MeetFlhow`,
@@ -318,6 +332,7 @@ export async function acceptInvite(token: string, userId: string, userEmail: str
     name: invite.workspace.name,
     slug: invite.workspace.slug,
     plan: invite.workspace.plan,
+    organization_type: invite.workspace.organizationType,
     avatar_color: invite.workspace.avatarColor,
     role: existingMember?.role ?? invite.role,
   };

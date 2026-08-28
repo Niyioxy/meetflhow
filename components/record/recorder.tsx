@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { upload } from "@vercel/blob/client";
 import { useMediaRecorder } from "@/hooks/use-media-recorder";
+import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Waveform } from "@/components/record/waveform";
 import { LiveCaptions } from "@/components/record/live-captions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PlatformSelect } from "@/components/upload/platform-select";
 import { ContentTypeSelect } from "@/components/upload/content-type-select";
+import { ShareWithWorkspaceToggle } from "@/components/upload/share-with-workspace-toggle";
+import { ALLOWED_CONTENT_TYPES } from "@/lib/organization-types";
+import type { OrganizationType } from "@/db/schema";
 import { cn } from "@/lib/utils";
 import { Mic, Pause, Play, Square, Download, Loader2, Sparkles, RotateCcw } from "lucide-react";
 
@@ -33,13 +38,27 @@ export function Recorder({
   const router = useRouter();
   const { status, seconds, audioBlob, stream, error, start, pause, resume, stop, reset } =
     useMediaRecorder();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const allowedContentTypes =
+    ALLOWED_CONTENT_TYPES[(activeWorkspace?.organization_type as OrganizationType) ?? "general"];
 
   const [title, setTitle] = useState(initialTitle ?? "");
   const [platform, setPlatform] = useState(initialPlatform ?? "in-person");
   const [contentType, setContentType] = useState("meeting");
+  const [shared, setShared] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const audioUrl = useMemo(() => (audioBlob ? URL.createObjectURL(audioBlob) : null), [audioBlob]);
+
+  // If the active workspace changes to one that restricts content types,
+  // fall back to whatever's still allowed rather than submitting a type
+  // the server will reject.
+  useEffect(() => {
+    if (!allowedContentTypes.includes(contentType as (typeof allowedContentTypes)[number])) {
+      setContentType(allowedContentTypes[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedContentTypes]);
 
   function handleDownload() {
     if (!audioBlob || !audioUrl) return;
@@ -53,15 +72,25 @@ export function Recorder({
     if (!audioBlob) return;
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append("file", audioBlob, `${title || "recording"}.webm`);
-      formData.append("title", title || "Recorded meeting");
-      formData.append("platform", platform);
-      formData.append("contentType", contentType);
+      const filename = `${title || "recording"}.webm`;
+      const blob = await upload(`meeting-uploads/${Date.now()}-${filename}`, audioBlob, {
+        access: "public",
+        handleUploadUrl: "/api/meetings/upload-token",
+        multipart: true,
+      });
 
       const res = await fetch("/api/meetings/upload", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blobUrl: blob.url,
+          title: title || "Recorded meeting",
+          platform,
+          contentType,
+          ...(activeWorkspaceId
+            ? { workspaceId: activeWorkspaceId, sharedWithWorkspace: shared }
+            : {}),
+        }),
       });
       const data = await res.json();
 
@@ -172,9 +201,15 @@ export function Recorder({
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Content type</Label>
-                <ContentTypeSelect value={contentType} onChange={setContentType} />
+                <ContentTypeSelect
+                  value={contentType}
+                  onChange={setContentType}
+                  allowedTypes={allowedContentTypes}
+                />
               </div>
             </div>
+
+            <ShareWithWorkspaceToggle checked={shared} onChange={setShared} />
 
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleDownload}>
