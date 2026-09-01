@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { upload } from "@vercel/blob/client";
 import { useMediaRecorder } from "@/hooks/use-media-recorder";
+import { useAudioLevel } from "@/hooks/use-audio-level";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Waveform } from "@/components/record/waveform";
 import { LiveCaptions } from "@/components/record/live-captions";
@@ -199,6 +200,7 @@ export function Recorder({
 
   const isRecording = status === "recording";
   const isPaused = status === "paused";
+  const { level, isSilent } = useAudioLevel(stream, isRecording);
 
   return (
     <Card>
@@ -258,6 +260,26 @@ export function Recorder({
           </p>
 
           {isRecording && <Waveform stream={stream} active={isRecording} />}
+
+          {isRecording && (
+            <div className="flex w-full max-w-[300px] flex-col items-center gap-1.5">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-[width] duration-150",
+                    isSilent ? "bg-amber-500" : "bg-emerald-500"
+                  )}
+                  style={{ width: `${Math.min(100, (level / 120) * 100)}%` }}
+                />
+              </div>
+              {isSilent && (
+                <p className="flex items-center gap-1.5 text-xs text-amber-600">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  No sound detected — check your microphone
+                </p>
+              )}
+            </div>
+          )}
 
           {(isRecording || isPaused) && (
             <div className="flex gap-2">
