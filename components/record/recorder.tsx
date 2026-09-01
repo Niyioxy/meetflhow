@@ -19,7 +19,19 @@ import { ShareWithWorkspaceToggle } from "@/components/upload/share-with-workspa
 import { ALLOWED_CONTENT_TYPES } from "@/lib/organization-types";
 import type { OrganizationType } from "@/db/schema";
 import { cn } from "@/lib/utils";
-import { Mic, Pause, Play, Square, Download, Loader2, Sparkles, RotateCcw, History } from "lucide-react";
+import {
+  Mic,
+  Pause,
+  Play,
+  Square,
+  Download,
+  Loader2,
+  Sparkles,
+  RotateCcw,
+  History,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60)
@@ -62,6 +74,14 @@ export function Recorder({
   const [shared, setShared] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // The recording is uploaded and turned into a real meeting the instant it
+  // stops — before anyone has a chance to edit a title or lose the tab —
+  // so it's durable on the server regardless of what happens to this
+  // browser afterward. The form below only ever edits that meeting's
+  // metadata from that point on; it never gates whether the audio is safe.
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  const [savedMeetingId, setSavedMeetingId] = useState<string | null>(null);
+
   const audioUrl = useMemo(() => (audioBlob ? URL.createObjectURL(audioBlob) : null), [audioBlob]);
 
   // If the active workspace changes to one that restricts content types,
@@ -82,9 +102,9 @@ export function Recorder({
     a.click();
   }
 
-  async function handleUpload() {
-    if (!audioBlob) return;
-    setSubmitting(true);
+  async function autoSaveRecording(): Promise<string | null> {
+    if (!audioBlob) return null;
+    setAutoSaveStatus("saving");
     try {
       const filename = `${title || "recording"}.webm`;
       const blob = await upload(`meeting-uploads/${Date.now()}-${filename}`, audioBlob, {
@@ -107,14 +127,62 @@ export function Recorder({
         }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save recording");
 
-      if (!res.ok) {
-        throw new Error(data.error || "Upload failed");
+      setSavedMeetingId(data.meetingId);
+      setAutoSaveStatus("saved");
+      discardDraft();
+      return data.meetingId as string;
+    } catch (err) {
+      setAutoSaveStatus("failed");
+      toast.error(
+        err instanceof Error
+          ? `Couldn't save recording automatically: ${err.message}`
+          : "Couldn't save recording automatically"
+      );
+      return null;
+    }
+  }
+
+  // Fires once per stopped recording (fresh or restored from a draft) —
+  // this is what makes the recording durable, with no click required.
+  useEffect(() => {
+    if (status !== "stopped" || !audioBlob || savedMeetingId || autoSaveStatus !== "idle") return;
+    autoSaveRecording();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, audioBlob]);
+
+  async function handleFinish() {
+    if (!audioBlob) return;
+    setSubmitting(true);
+    try {
+      let meetingId = savedMeetingId;
+
+      if (!meetingId) {
+        // Auto-save hasn't succeeded yet (still in flight, or failed) —
+        // this click does double duty as the retry.
+        meetingId = await autoSaveRecording();
+        if (!meetingId) throw new Error("Recording isn't saved yet — check your connection and try again");
+      } else {
+        // Already durably saved; this just applies whatever the user edited.
+        const res = await fetch(`/api/meetings/${meetingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: title || "Recorded meeting",
+            platform,
+            contentType,
+            ...(activeWorkspaceId ? { sharedWithWorkspace: shared } : {}),
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to save changes");
+        }
       }
 
       toast.success("Recording processed");
-      discardDraft();
-      router.push(`/meetings/${data.meetingId}`);
+      router.push(`/meetings/${meetingId}`);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
@@ -137,7 +205,8 @@ export function Recorder({
       <CardHeader>
         <CardTitle>Record a meeting</CardTitle>
         <CardDescription>
-          Records mic audio in your browser. Nothing leaves your device until you upload it.
+          Records mic audio in your browser, and saves it to your account automatically the moment
+          you stop — safe even if you close the tab before reviewing it.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
@@ -211,7 +280,15 @@ export function Recorder({
           )}
 
           {status === "stopped" && (
-            <Button variant="outline" size="sm" onClick={reset}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                reset();
+                setAutoSaveStatus("idle");
+                setSavedMeetingId(null);
+              }}
+            >
               <RotateCcw className="mr-2 h-4 w-4" />
               Record again
             </Button>
@@ -223,6 +300,30 @@ export function Recorder({
         {status === "stopped" && audioUrl && (
           <div className="flex flex-col gap-4">
             <audio controls src={audioUrl} className="w-full" />
+
+            <div className="flex items-center gap-2 text-xs">
+              {autoSaveStatus === "saving" && (
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Saving recording to the server…
+                </span>
+              )}
+              {autoSaveStatus === "saved" && (
+                <span className="flex items-center gap-1.5 text-emerald-600">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Saved — safe on the server, even if you close this tab
+                </span>
+              )}
+              {autoSaveStatus === "failed" && (
+                <span className="flex items-center gap-1.5 text-destructive">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Couldn't save automatically —{" "}
+                  <button type="button" className="underline underline-offset-2" onClick={() => autoSaveRecording()}>
+                    retry now
+                  </button>
+                </span>
+              )}
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-2">
@@ -255,16 +356,20 @@ export function Recorder({
                 <Download className="mr-2 h-4 w-4" />
                 Download
               </Button>
-              <Button onClick={handleUpload} disabled={submitting} className="flex-1">
+              <Button
+                onClick={handleFinish}
+                disabled={submitting || autoSaveStatus === "saving"}
+                className="flex-1"
+              >
                 {submitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Transcribing & analyzing...
+                    {autoSaveStatus === "saved" ? "Saving changes..." : "Uploading & analyzing..."}
                   </>
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Upload & analyze
+                    {autoSaveStatus === "saved" ? "Continue" : "Upload & analyze"}
                   </>
                 )}
               </Button>
