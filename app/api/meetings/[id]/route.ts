@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
+import { del } from "@vercel/blob";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { meetings, contentTypeEnum } from "@/db/schema";
+import { meetings, callRooms, contentTypeEnum } from "@/db/schema";
 import { getMeetingDetail } from "@/lib/meetings";
 
 export async function GET(
@@ -67,4 +68,36 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     .returning();
 
   return NextResponse.json({ meeting: updated });
+}
+
+/**
+ * Deletes a meeting the caller owns. Transcripts, analysis, action items,
+ * comments, mentions, share links, translations, and follow-up emails all
+ * cascade-delete via their FK (see db/schema.ts); call_rooms doesn't, so
+ * it's unlinked first to avoid a foreign-key violation, and a
+ * still-lingering transient audio blob (e.g. a meeting that failed before
+ * process-transcript could clean it up) is removed too.
+ */
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const existing = await db.query.meetings.findFirst({
+    where: (m, { and, eq }) => and(eq(m.id, params.id), eq(m.userId, session.user.id)),
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "Meeting not found" }, { status: 404 });
+  }
+
+  await db.update(callRooms).set({ meetingId: null }).where(eq(callRooms.meetingId, params.id));
+
+  if (existing.blobUrl) {
+    await del(existing.blobUrl).catch((error) => console.error("Failed to delete transient audio blob", error));
+  }
+
+  await db.delete(meetings).where(eq(meetings.id, params.id));
+
+  return NextResponse.json({ ok: true });
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -13,9 +14,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PlatformBadge } from "@/components/dashboard/platform-badge";
 import { StatusBadge } from "@/components/dashboard/status-badge";
-import { FileAudio, ChevronRight } from "lucide-react";
+import { FileAudio, ChevronRight, Trash2, Loader2 } from "lucide-react";
 import type { MeetingStatus } from "@/db/schema";
 
 export interface MeetingListItem {
@@ -31,6 +40,24 @@ const IN_PROGRESS: MeetingStatus[] = ["uploading", "transcribing", "analyzing"];
 
 export function MeetingsList({ initialMeetings }: { initialMeetings: MeetingListItem[] }) {
   const [meetings, setMeetings] = useState(initialMeetings);
+  const [deleteTarget, setDeleteTarget] = useState<MeetingListItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/meetings/${deleteTarget.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setMeetings((prev) => prev.filter((m) => m.id !== deleteTarget.id));
+      toast.success("Meeting deleted");
+    } catch {
+      toast.error("Failed to delete meeting");
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  }
 
   useEffect(() => {
     const hasInProgress = meetings.some((m) => IN_PROGRESS.includes(m.status));
@@ -91,18 +118,51 @@ export function MeetingsList({ initialMeetings }: { initialMeetings: MeetingList
                   <StatusBadge status={meeting.status} />
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/meetings/${meeting.id}`}>
-                      View
-                      <ChevronRight className="ml-1 h-3.5 w-3.5" />
-                    </Link>
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/meetings/${meeting.id}`}>
+                        View
+                        <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Delete meeting"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleteTarget(meeting)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Card>
+
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete meeting</DialogTitle>
+            <DialogDescription>
+              This permanently deletes {deleteTarget ? `"${deleteTarget.title}"` : "this meeting"} —
+              its transcript, summary, action items, and any comments or shares. This cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" disabled={deleting} onClick={handleDelete}>
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
