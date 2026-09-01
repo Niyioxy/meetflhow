@@ -317,7 +317,7 @@ export function Recorder({
               {autoSaveStatus === "failed" && (
                 <span className="flex items-center gap-1.5 text-destructive">
                   <AlertTriangle className="h-3.5 w-3.5" />
-                  Couldn't save automatically —{" "}
+                  Couldn&apos;t save automatically —{" "}
                   <button type="button" className="underline underline-offset-2" onClick={() => autoSaveRecording()}>
                     retry now
                   </button>
