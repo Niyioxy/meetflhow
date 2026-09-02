@@ -8,6 +8,7 @@ import { generateCostVerdict } from "@/lib/gemini/cost-benchmark";
 import { calculateMeetingCost } from "@/lib/cost";
 import { triggerWebhooks } from "@/lib/webhooks";
 import { postMeetingToSlack } from "@/lib/integrations/slack";
+import { attributeActionItemsToSpeakers } from "@/lib/action-item-attribution";
 import type { AttendeeSalary, CalculatedCost } from "@/types/cost";
 import type { SpeakerSegment } from "@/types/analysis";
 import type { TranscriptUtterance } from "@/lib/deepgram/transcribe";
@@ -330,6 +331,11 @@ export async function runAllMeetingAnalyses(
     const analysisRow = await db.query.analysis.findFirst({
       where: (a, { eq }) => eq(a.meetingId, meetingId),
     });
+
+    const transcriptRow = await db.query.transcripts.findFirst({
+      where: (t, { eq }) => eq(t.meetingId, meetingId),
+    });
+    await attributeActionItemsToSpeakers(meetingId, transcriptRow?.speakerSegments);
 
     await Promise.all([
       triggerWebhooks(updatedMeeting.workspaceId, "meeting.completed", {
