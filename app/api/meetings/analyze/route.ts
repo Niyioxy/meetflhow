@@ -6,6 +6,7 @@ import { runAllMeetingAnalyses, wordCount } from "@/lib/meetings";
 import { getWorkspaceMember, getWorkspaceOrThrow } from "@/lib/workspace-auth";
 import { isContentTypeAllowed } from "@/lib/organization-types";
 import { canRecordMeeting, FREE_TIER_MONTHLY_RECORDINGS } from "@/lib/billing";
+import { logMeetingEvent } from "@/lib/meeting-events";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -111,6 +112,8 @@ export async function POST(req: Request) {
       language: null,
       wordCount: wordCount(transcriptText),
     });
+
+    await logMeetingEvent(meeting.id, "uploaded", "Pasted transcript");
 
     targetMeetingId = meeting.id;
     textToAnalyze = transcriptText;

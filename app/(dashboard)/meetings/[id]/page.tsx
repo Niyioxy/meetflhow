@@ -19,6 +19,7 @@ import { ShareModal } from "@/components/meeting/share-modal";
 import { PostToSlackButton } from "@/components/meeting/post-to-slack-button";
 import { PushToNotionButton } from "@/components/meeting/push-to-notion-button";
 import { TranslatableMeetingContent } from "@/components/meeting/translatable-meeting-content";
+import { AuditTrailCard } from "@/components/meeting/audit-trail-card";
 
 export default async function MeetingDetailPage({
   params,
@@ -197,6 +198,8 @@ export default async function MeetingDetailPage({
           initialTimeline={meeting.analysis?.sentimentTimeline ?? null}
         />
       )}
+
+      <AuditTrailCard events={meeting.events} />
     </div>
   );
 }

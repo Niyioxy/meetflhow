@@ -179,6 +179,33 @@ export const meetings = pgTable("meetings", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const meetingEventTypeEnum = [
+  "uploaded",
+  "transcribing",
+  "transcribed",
+  "analyzing",
+  "ready",
+  "failed",
+  "retried",
+] as const;
+export type MeetingEventType = (typeof meetingEventTypeEnum)[number];
+
+/**
+ * Append-only processing timeline for a meeting — makes "why did this
+ * fail" and "is this still working" visible instead of a mystery, since
+ * the pipeline (upload -> transcribe -> analyze) runs across several
+ * decoupled serverless steps with no other shared log a user can see.
+ */
+export const meetingEvents = pgTable("meeting_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  meetingId: uuid("meeting_id")
+    .notNull()
+    .references(() => meetings.id, { onDelete: "cascade" }),
+  event: text("event").$type<MeetingEventType>().notNull(),
+  detail: text("detail"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const callRoomStatusEnum = ["active", "ended"] as const;
 export type CallRoomStatus = (typeof callRoomStatusEnum)[number];
 
@@ -624,6 +651,11 @@ export const meetingsRelations = relations(meetings, ({ one, many }) => ({
   tasks: many(tasks),
   comments: many(transcriptComments),
   shares: many(meetingShares),
+  events: many(meetingEvents),
+}));
+
+export const meetingEventsRelations = relations(meetingEvents, ({ one }) => ({
+  meeting: one(meetings, { fields: [meetingEvents.meetingId], references: [meetings.id] }),
 }));
 
 export const workspacesRelations = relations(workspaces, ({ one, many }) => ({

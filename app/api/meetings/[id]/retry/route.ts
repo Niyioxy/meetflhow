@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { meetings } from "@/db/schema";
 import { getMeetingDetail, runAllMeetingAnalyses } from "@/lib/meetings";
 import { triggerInternalStep } from "@/lib/internal-auth";
+import { logMeetingEvent } from "@/lib/meeting-events";
 
 export async function POST(
   _req: Request,
@@ -26,6 +27,7 @@ export async function POST(
   }
 
   if (meeting.transcript) {
+    await logMeetingEvent(meeting.id, "retried", "Retrying analysis");
     waitUntil(
       runAllMeetingAnalyses(meeting.id, meeting.transcript.fullText).catch((error) =>
         console.error("Retry analysis failed", error)
@@ -36,6 +38,7 @@ export async function POST(
 
   if (meeting.blobUrl) {
     await db.update(meetings).set({ status: "transcribing" }).where(eq(meetings.id, meeting.id));
+    await logMeetingEvent(meeting.id, "retried", "Retrying transcription");
     try {
       await triggerInternalStep(`/api/meetings/${meeting.id}/process-transcript`, {
         blobUrl: meeting.blobUrl,
@@ -45,6 +48,7 @@ export async function POST(
     } catch (error) {
       console.error("Retry transcription hand-off failed", error);
       await db.update(meetings).set({ status: "failed" }).where(eq(meetings.id, meeting.id));
+      await logMeetingEvent(meeting.id, "failed", "Retry hand-off failed");
       return NextResponse.json({ error: "Failed to retry" }, { status: 500 });
     }
     return NextResponse.json({ accepted: true, retrying: "transcription" });

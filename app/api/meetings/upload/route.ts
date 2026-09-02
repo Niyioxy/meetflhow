@@ -6,6 +6,7 @@ import { triggerInternalStep } from "@/lib/internal-auth";
 import { getWorkspaceMember, getWorkspaceOrThrow } from "@/lib/workspace-auth";
 import { isContentTypeAllowed } from "@/lib/organization-types";
 import { canRecordMeeting, FREE_TIER_MONTHLY_RECORDINGS } from "@/lib/billing";
+import { logMeetingEvent } from "@/lib/meeting-events";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -76,6 +77,8 @@ export async function POST(req: Request) {
     })
     .returning();
 
+  await logMeetingEvent(meeting.id, "uploaded");
+
   try {
     // blobUrl was uploaded directly from the browser to Vercel Blob (see
     // /api/meetings/upload-token), bypassing this function's request body
@@ -92,6 +95,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Upload hand-off failed", error);
     await db.update(meetings).set({ status: "failed" }).where(eq(meetings.id, meeting.id));
+    await logMeetingEvent(meeting.id, "failed", "Failed to start transcription");
     return NextResponse.json(
       { error: "Failed to start processing meeting", meetingId: meeting.id },
       { status: 500 }

@@ -9,6 +9,7 @@ import { calculateMeetingCost } from "@/lib/cost";
 import { triggerWebhooks } from "@/lib/webhooks";
 import { postMeetingToSlack } from "@/lib/integrations/slack";
 import { attributeActionItemsToSpeakers } from "@/lib/action-item-attribution";
+import { logMeetingEvent } from "@/lib/meeting-events";
 import type { AttendeeSalary, CalculatedCost } from "@/types/cost";
 import type { SpeakerSegment } from "@/types/analysis";
 import type { TranscriptUtterance } from "@/lib/deepgram/transcribe";
@@ -283,6 +284,7 @@ export async function runAllMeetingAnalyses(
   voiceMatches?: Record<string, VoiceMatch>
 ) {
   await db.update(meetings).set({ status: "analyzing" }).where(eq(meetings.id, meetingId));
+  await logMeetingEvent(meetingId, "analyzing");
 
   await getOrCreateAnalysisRow(meetingId);
 
@@ -326,6 +328,12 @@ export async function runAllMeetingAnalyses(
     .set({ status: coreOk ? "ready" : "failed" })
     .where(eq(meetings.id, meetingId))
     .returning();
+
+  await logMeetingEvent(
+    meetingId,
+    coreOk ? "ready" : "failed",
+    coreOk ? undefined : "Meeting analysis failed"
+  );
 
   if (coreOk && updatedMeeting) {
     const analysisRow = await db.query.analysis.findFirst({
@@ -420,6 +428,9 @@ export async function getMeetingDetail(meetingId: string, userId: string) {
       transcript: true,
       analysis: true,
       actionItems: true,
+      events: {
+        orderBy: (e, { asc }) => [asc(e.createdAt)],
+      },
     },
   });
 

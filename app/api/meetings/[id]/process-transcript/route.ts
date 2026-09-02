@@ -8,6 +8,7 @@ import { wordCount } from "@/lib/meetings";
 import { matchSpeakersByVoice } from "@/lib/voice-identification";
 import type { VoiceMatch } from "@/lib/voice-identification";
 import { checkInternalSecret, triggerInternalStep } from "@/lib/internal-auth";
+import { logMeetingEvent } from "@/lib/meeting-events";
 import { eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
@@ -37,6 +38,8 @@ async function processTranscript(
   userId: string,
   workspaceId: string | null
 ) {
+  await logMeetingEvent(meetingId, "transcribing");
+
   try {
     const audioRes = await fetch(blobUrl);
     if (!audioRes.ok) {
@@ -91,6 +94,8 @@ async function processTranscript(
       .set({ status: "analyzing", blobUrl: null })
       .where(eq(meetings.id, meetingId));
 
+    await logMeetingEvent(meetingId, "transcribed");
+
     await triggerInternalStep(`/api/meetings/${meetingId}/process-analysis`, {
       transcriptText: transcription.text,
       utterances: transcription.utterances,
@@ -99,5 +104,10 @@ async function processTranscript(
   } catch (error) {
     console.error("process-transcript failed", error);
     await db.update(meetings).set({ status: "failed" }).where(eq(meetings.id, meetingId));
+    await logMeetingEvent(
+      meetingId,
+      "failed",
+      error instanceof Error ? error.message : "Transcription failed"
+    );
   }
 }
