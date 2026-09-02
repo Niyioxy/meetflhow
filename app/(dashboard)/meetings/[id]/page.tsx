@@ -20,6 +20,8 @@ import { PostToSlackButton } from "@/components/meeting/post-to-slack-button";
 import { PushToNotionButton } from "@/components/meeting/push-to-notion-button";
 import { TranslatableMeetingContent } from "@/components/meeting/translatable-meeting-content";
 import { AuditTrailCard } from "@/components/meeting/audit-trail-card";
+import { EquityScoreCard } from "@/components/meeting/equity-score-card";
+import { computeEquityScore } from "@/lib/meeting-equity";
 
 export default async function MeetingDetailPage({
   params,
@@ -35,6 +37,9 @@ export default async function MeetingDetailPage({
   }
 
   const isProcessing = !["ready", "failed"].includes(meeting.status);
+  const equityScore = meeting.transcript?.speakerSegments
+    ? computeEquityScore(meeting.transcript.speakerSegments)
+    : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -198,6 +203,8 @@ export default async function MeetingDetailPage({
           initialTimeline={meeting.analysis?.sentimentTimeline ?? null}
         />
       )}
+
+      {equityScore && <EquityScoreCard equity={equityScore} />}
 
       <AuditTrailCard events={meeting.events} />
     </div>
