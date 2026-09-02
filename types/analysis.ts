@@ -34,6 +34,23 @@ export interface SentimentTimeline {
 
 export type SpeakerIdentificationMethod = "voice_match" | "ai_inference" | "manual";
 
+export interface SermonGuide {
+  kind: "sermon_guide";
+  centralTheme: string;
+  scriptureReferences: string[];
+  discussionQuestions: string[];
+}
+
+export interface PodcastNotes {
+  kind: "podcast_notes";
+  episodeSummary: string;
+  chapters: { title: string; description: string }[];
+  pullQuotes: string[];
+}
+
+/** Content-type-native output — sermon discussion guides, podcast show notes — distinct from the generic meeting summary/highlights. */
+export type VerticalContent = SermonGuide | PodcastNotes;
+
 export interface SpeakerSegment {
   speaker: string;
   text: string;

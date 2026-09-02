@@ -1,0 +1,1 @@
+ALTER TABLE "analysis" ADD COLUMN "vertical_content" jsonb;

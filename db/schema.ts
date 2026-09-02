@@ -19,6 +19,7 @@ import type {
   MeetingCoachScore,
   SentimentTimeline,
   SpeakerSegment,
+  VerticalContent,
 } from "@/types/analysis";
 import type { AttendeeSalary, CalculatedCost } from "@/types/cost";
 import type { InsightsCache } from "@/types/insights";
@@ -380,6 +381,7 @@ export const analysis = pgTable("analysis", {
   sentiment: text("sentiment").$type<Sentiment>().notNull().default("neutral"),
   meetingScore: jsonb("meeting_score").$type<MeetingCoachScore>(),
   sentimentTimeline: jsonb("sentiment_timeline").$type<SentimentTimeline>(),
+  verticalContent: jsonb("vertical_content").$type<VerticalContent>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

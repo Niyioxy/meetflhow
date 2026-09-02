@@ -21,6 +21,7 @@ import { PushToNotionButton } from "@/components/meeting/push-to-notion-button";
 import { TranslatableMeetingContent } from "@/components/meeting/translatable-meeting-content";
 import { AuditTrailCard } from "@/components/meeting/audit-trail-card";
 import { EquityScoreCard } from "@/components/meeting/equity-score-card";
+import { VerticalContentCard } from "@/components/meeting/vertical-content-card";
 import { computeEquityScore } from "@/lib/meeting-equity";
 
 export default async function MeetingDetailPage({
@@ -189,6 +190,15 @@ export default async function MeetingDetailPage({
           )}
         />
       )}
+
+      {meeting.status === "ready" &&
+        meeting.transcript &&
+        (meeting.contentType === "sermon" || meeting.contentType === "podcast") && (
+          <VerticalContentCard
+            meetingId={meeting.id}
+            initialContent={meeting.analysis?.verticalContent ?? null}
+          />
+        )}
 
       {meeting.status === "ready" && meeting.transcript && (
         <MeetingCoachCard

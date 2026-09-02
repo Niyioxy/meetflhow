@@ -3,6 +3,7 @@ import { actionItems, analysis, meetings, transcripts, tasks, type ContentType }
 import { analyzeTranscript } from "@/lib/gemini/analyze";
 import { generateMeetingCoachScore } from "@/lib/gemini/coach";
 import { generateSentimentTimeline } from "@/lib/gemini/sentiment";
+import { generateSermonGuide, generatePodcastNotes } from "@/lib/gemini/vertical-content";
 import { identifySpeakers, nameSpeakerLabels } from "@/lib/gemini/speakers";
 import { generateCostVerdict } from "@/lib/gemini/cost-benchmark";
 import { calculateMeetingCost } from "@/lib/cost";
@@ -216,6 +217,33 @@ export async function runSentimentTimeline(meetingId: string, transcriptText: st
     .set({ sentimentTimeline: timeline })
     .where(eq(analysis.id, row.id));
   return timeline;
+}
+
+/**
+ * Content-type-native output — a sermon discussion guide or podcast show
+ * notes — distinct from the generic summary/highlights every content type
+ * already gets. Only meaningful for the two content types that have a
+ * genuinely different downstream use than "meeting notes".
+ */
+export async function runVerticalContent(
+  meetingId: string,
+  transcriptText: string,
+  contentType: ContentType
+) {
+  const row = await getOrCreateAnalysisRow(meetingId);
+  if (row.verticalContent) return row.verticalContent;
+
+  let result;
+  if (contentType === "sermon") {
+    result = await generateSermonGuide(transcriptText);
+  } else if (contentType === "podcast") {
+    result = await generatePodcastNotes(transcriptText);
+  } else {
+    throw new Error(`Vertical content isn't available for content type "${contentType}"`);
+  }
+
+  await db.update(analysis).set({ verticalContent: result }).where(eq(analysis.id, row.id));
+  return result;
 }
 
 export async function runSpeakerIdentification(
