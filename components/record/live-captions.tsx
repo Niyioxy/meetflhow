@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Globe } from "lucide-react";
+import { Globe, Radar } from "lucide-react";
 import { useLiveCaptions } from "@/hooks/use-live-captions";
 import {
   DropdownMenu,
@@ -11,8 +11,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { locales, localeNames, type Locale } from "@/i18n/config";
+import { detectSignals, type DealSignalCategory } from "@/lib/deal-radar";
+import { cn } from "@/lib/utils";
 
 type CaptionMode = "off" | "original" | Locale;
+
+interface FlaggedSignal {
+  key: string;
+  phrase: string;
+  category: DealSignalCategory;
+}
 
 export function LiveCaptions({
   stream,
@@ -24,6 +32,30 @@ export function LiveCaptions({
   const { status, lines, setTargetLanguage, start, stop } = useLiveCaptions();
   const [mode, setMode] = useState<CaptionMode>("off");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Live Deal Radar — client-side keyword watch over the same caption
+  // stream, no new AI calls. Runs whenever captions are on, independent of
+  // which language they're displayed in (always scans the original text).
+  const [signals, setSignals] = useState<FlaggedSignal[]>([]);
+  const recordedKeysRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    for (const line of lines) {
+      for (const signal of detectSignals(line.original)) {
+        const key = `${line.id}:${signal.phrase}`;
+        if (recordedKeysRef.current.has(key)) continue;
+        recordedKeysRef.current.add(key);
+        setSignals((prev) => [...prev, { key, phrase: signal.phrase, category: signal.category }]);
+      }
+    }
+  }, [lines]);
+
+  useEffect(() => {
+    if (!active) {
+      setSignals([]);
+      recordedKeysRef.current.clear();
+    }
+  }, [active]);
 
   useEffect(() => {
     if (!active || mode === "off" || !stream) {
@@ -84,6 +116,30 @@ export function LiveCaptions({
               {line.translated ?? (line.translating ? `${line.original} …` : line.original)}
             </p>
           ))}
+        </div>
+      )}
+
+      {signals.length > 0 && (
+        <div className="flex flex-col gap-1.5 border-t border-border pt-2">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Radar className="h-3 w-3" />
+            Deal radar
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {signals.map((signal) => (
+              <span
+                key={signal.key}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-xs font-medium capitalize",
+                  signal.category === "risk"
+                    ? "bg-amber-500/15 text-amber-600"
+                    : "bg-emerald-500/15 text-emerald-600"
+                )}
+              >
+                {signal.phrase}
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </div>
