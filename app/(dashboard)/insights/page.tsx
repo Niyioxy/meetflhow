@@ -10,6 +10,7 @@ import { ScoreTrendChart } from "@/components/insights/score-trend-chart";
 import { InsightSummaryCards } from "@/components/insights/insight-summary-cards";
 import { TimeHeatmap } from "@/components/insights/time-heatmap";
 import { ActionItemHealth } from "@/components/insights/action-item-health";
+import { RecurringMeetingsCard } from "@/components/insights/recurring-meetings-card";
 import type { InsightPeriod, InsightsResponse, InsightsSummary } from "@/types/insights";
 
 type InsightsApiResponse = InsightsResponse & { summary: InsightsSummary | null };
@@ -104,6 +105,8 @@ export default function InsightsPage() {
           <TimeHeatmap data={data.heatmap} busiestDay={data.busiest_day} busiestHour={data.busiest_hour} />
 
           <ActionItemHealth period={completionPeriod} />
+
+          <RecurringMeetingsCard />
         </>
       )}
     </div>
