@@ -22,6 +22,7 @@ import { TranslatableMeetingContent } from "@/components/meeting/translatable-me
 import { AuditTrailCard } from "@/components/meeting/audit-trail-card";
 import { EquityScoreCard } from "@/components/meeting/equity-score-card";
 import { VerticalContentCard } from "@/components/meeting/vertical-content-card";
+import { DecisionsCard } from "@/components/meeting/decisions-card";
 import { computeEquityScore } from "@/lib/meeting-equity";
 
 export default async function MeetingDetailPage({
@@ -92,20 +93,23 @@ export default async function MeetingDetailPage({
 
         return (
         <div className="grid gap-6 sm:grid-cols-2">
-          {primaryPoints.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{primaryTitle}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc space-y-2 pl-5 text-sm">
-                  {primaryPoints.map((point, i) => (
-                    <li key={i}>{point}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
+          {primaryPoints.length > 0 &&
+            (isMeeting ? (
+              <DecisionsCard meetingId={meeting.id} title={primaryTitle} decisions={primaryPoints} />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>{primaryTitle}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="list-disc space-y-2 pl-5 text-sm">
+                    {primaryPoints.map((point, i) => (
+                      <li key={i}>{point}</li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
 
           {meeting.analysis.openQuestions.length > 0 && (
             <Card>

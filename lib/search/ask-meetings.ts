@@ -12,7 +12,7 @@ export interface AskMeetingsResult {
 }
 
 /** Own meetings + workspace-shared meetings the user is a member of — mirrors getMeetingDetail's access rule. */
-async function getAccessibleMeetingIds(userId: string): Promise<string[]> {
+export async function getAccessibleMeetingIds(userId: string): Promise<string[]> {
   const memberships = await db.query.workspaceMembers.findMany({
     where: (m, { eq }) => eq(m.userId, userId),
     columns: { workspaceId: true },
