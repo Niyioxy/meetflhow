@@ -1,11 +1,7 @@
 import { deepgram } from "./client";
+import type { TranscriptUtterance } from "@/types/analysis";
 
-export interface TranscriptUtterance {
-  speaker: number;
-  start: number;
-  end: number;
-  transcript: string;
-}
+export type { TranscriptUtterance };
 
 export interface TranscriptionResult {
   text: string;

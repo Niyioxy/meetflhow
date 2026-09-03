@@ -34,6 +34,14 @@ export interface SentimentTimeline {
 
 export type SpeakerIdentificationMethod = "voice_match" | "ai_inference" | "manual";
 
+/** One diarized turn from Deepgram — canonical definition, re-exported from lib/deepgram/transcribe for backward compatibility. */
+export interface TranscriptUtterance {
+  speaker: number;
+  start: number;
+  end: number;
+  transcript: string;
+}
+
 export interface SermonGuide {
   kind: "sermon_guide";
   centralTheme: string;

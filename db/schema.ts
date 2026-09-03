@@ -20,6 +20,7 @@ import type {
   SentimentTimeline,
   SpeakerSegment,
   VerticalContent,
+  TranscriptUtterance,
 } from "@/types/analysis";
 import type { AttendeeSalary, CalculatedCost } from "@/types/cost";
 import type { InsightsCache } from "@/types/insights";
@@ -246,6 +247,12 @@ export const transcripts = pgTable("transcripts", {
     .$type<SpeakerIdentificationMethod>()
     .notNull()
     .default("ai_inference"),
+  // Raw diarized turns with real start/end timestamps from Deepgram — kept
+  // (unlike speakerSegments' human-readable timestamp_approx strings) so
+  // conversation-dynamics analysis (silence, interruptions) can be computed
+  // after the fact without re-transcribing. Null for meetings transcribed
+  // before this column existed, or pasted-transcript meetings with no audio.
+  utterances: jsonb("utterances").$type<TranscriptUtterance[]>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

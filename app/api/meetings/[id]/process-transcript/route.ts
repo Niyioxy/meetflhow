@@ -57,6 +57,7 @@ async function processTranscript(
         fullText: transcription.text,
         language: transcription.language,
         wordCount: wordCount(transcription.text),
+        utterances: transcription.utterances.length > 0 ? transcription.utterances : null,
       })
       .returning();
 

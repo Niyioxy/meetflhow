@@ -24,6 +24,8 @@ import { EquityScoreCard } from "@/components/meeting/equity-score-card";
 import { VerticalContentCard } from "@/components/meeting/vertical-content-card";
 import { DecisionsCard } from "@/components/meeting/decisions-card";
 import { computeEquityScore } from "@/lib/meeting-equity";
+import { UnsaidCard } from "@/components/meeting/unsaid-card";
+import { computeUnsaidMetrics } from "@/lib/meeting-dynamics";
 
 export default async function MeetingDetailPage({
   params,
@@ -41,6 +43,9 @@ export default async function MeetingDetailPage({
   const isProcessing = !["ready", "failed"].includes(meeting.status);
   const equityScore = meeting.transcript?.speakerSegments
     ? computeEquityScore(meeting.transcript.speakerSegments)
+    : null;
+  const unsaidMetrics = meeting.transcript?.utterances
+    ? computeUnsaidMetrics(meeting.transcript.utterances)
     : null;
 
   return (
@@ -219,6 +224,8 @@ export default async function MeetingDetailPage({
       )}
 
       {equityScore && <EquityScoreCard equity={equityScore} />}
+
+      {unsaidMetrics && <UnsaidCard metrics={unsaidMetrics} />}
 
       <AuditTrailCard events={meeting.events} />
     </div>
