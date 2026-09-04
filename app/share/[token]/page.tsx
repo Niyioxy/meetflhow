@@ -23,7 +23,13 @@ export default async function PublicSharePage({ params }: { params: { token: str
   if (expired) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 px-4 text-center">
-        <Logo size="sm" />
+        <div className="flex items-center gap-2">
+          <Logo variant="icon" size="sm" />
+          <span className="text-lg font-bold">
+            <span className="text-slate-900">Meet</span>
+            <span className="text-[#3B82F6]">Flhow</span>
+          </span>
+        </div>
         <h1 className="text-lg font-semibold text-slate-900">This share link has expired</h1>
         <p className="text-sm text-slate-500">Ask the meeting owner for a new link.</p>
       </div>
@@ -37,8 +43,12 @@ export default async function PublicSharePage({ params }: { params: { token: str
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <header className="border-b border-slate-100 px-6 py-4">
-        <Link href="/">
-          <Logo size="sm" />
+        <Link href="/" className="flex items-center gap-2">
+          <Logo variant="icon" size="sm" />
+          <span className="text-lg font-bold">
+            <span className="text-slate-900">Meet</span>
+            <span className="text-[#3B82F6]">Flhow</span>
+          </span>
         </Link>
       </header>
 
