@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { PlatformBadge } from "@/components/dashboard/platform-badge";
 import { SentimentBadge } from "@/components/meeting/sentiment-badge";
-import { ActionItemsCard } from "@/components/meeting/action-items-card";
+import { ActionItemsCard, type ActionItem } from "@/components/meeting/action-items-card";
 import { ProcessingBanner } from "@/components/meeting/processing-banner";
 import { RetryButton } from "@/components/meeting/retry-button";
 import { MeetingCoachCard } from "@/components/meeting/meeting-coach-card";
@@ -26,6 +26,7 @@ import { DecisionsCard } from "@/components/meeting/decisions-card";
 import { computeEquityScore } from "@/lib/meeting-equity";
 import { UnsaidCard } from "@/components/meeting/unsaid-card";
 import { computeUnsaidMetrics } from "@/lib/meeting-dynamics";
+import type { SpeakerSegment } from "@/types/analysis";
 
 export default async function MeetingDetailPage({
   params,
@@ -88,7 +89,9 @@ export default async function MeetingDetailPage({
 
       {(() => {
         const isMeeting = meeting.contentType === "meeting";
-        const primaryPoints = isMeeting ? meeting.analysis?.decisions ?? [] : meeting.analysis?.highlights ?? [];
+        const primaryPoints: string[] = isMeeting
+          ? meeting.analysis?.decisions ?? []
+          : meeting.analysis?.highlights ?? [];
         const primaryTitle = isMeeting ? t("keyDecisions") : t("keyTakeaways");
         const openQuestions = meeting.analysis?.openQuestions ?? [];
 
@@ -123,7 +126,7 @@ export default async function MeetingDetailPage({
               </CardHeader>
               <CardContent>
                 <ul className="list-disc space-y-2 pl-5 text-sm">
-                  {meeting.analysis.openQuestions.map((question, i) => (
+                  {meeting.analysis.openQuestions.map((question: string, i: number) => (
                     <li key={i}>{question}</li>
                   ))}
                 </ul>
@@ -150,7 +153,7 @@ export default async function MeetingDetailPage({
           <ActionItemsCard
             meetingTitle={meeting.title}
             workspaceId={meeting.workspaceId}
-            initialItems={meeting.actionItems.map((item) => ({
+            initialItems={meeting.actionItems.map((item: ActionItem) => ({
               id: item.id,
               task: item.task,
               owner: item.owner,
@@ -175,9 +178,10 @@ export default async function MeetingDetailPage({
             workspaceId={meeting.workspaceId}
             candidateNames={Array.from(
               new Set(
-                (meeting.transcript.speakerSegments ?? [])
-                  .filter((s) => s.identificationMethod === "voice_match" || s.identificationMethod === "manual")
-                  .map((s) => s.speaker)
+                (meeting.transcript.speakerSegments ?? []).filter(
+                  (s: SpeakerSegment) =>
+                    s.identificationMethod === "voice_match" || s.identificationMethod === "manual"
+                ).map((s: SpeakerSegment) => s.speaker)
               )
             )}
           />
@@ -193,8 +197,8 @@ export default async function MeetingDetailPage({
           suggestedNames={Array.from(
             new Set(
               (meeting.transcript?.speakerSegments ?? [])
-                .map((s) => s.speaker)
-                .filter((name) => name && name !== "Unknown")
+                .map((s: SpeakerSegment) => s.speaker)
+                .filter((name: string) => name && name !== "Unknown")
             )
           )}
         />

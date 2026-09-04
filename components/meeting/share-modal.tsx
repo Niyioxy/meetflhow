@@ -23,6 +23,8 @@ export function ShareModal({ meetingId }: { meetingId: string }) {
   const [saving, setSaving] = useState(false);
   const [share, setShare] = useState<ShareLinkView | null>(null);
   const [password, setPassword] = useState("");
+  const [recapEmail, setRecapEmail] = useState("");
+  const [sendingRecap, setSendingRecap] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -108,6 +110,26 @@ export function ShareModal({ meetingId }: { meetingId: string }) {
     toast.success("Link copied to clipboard");
   }
 
+  async function handleSendRecap() {
+    if (!recapEmail) return;
+    setSendingRecap(true);
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}/share/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: recapEmail }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to send recap");
+      toast.success(`Recap sent to ${recapEmail}`);
+      setRecapEmail("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send recap");
+    } finally {
+      setSendingRecap(false);
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
@@ -139,6 +161,28 @@ export function ShareModal({ meetingId }: { meetingId: string }) {
               <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
                 Copy
               </Button>
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-border pt-4">
+              <Label className="text-sm font-normal">Email this recap to someone who missed it</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="email"
+                  placeholder="them@example.com"
+                  value={recapEmail}
+                  onChange={(e) => setRecapEmail(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSendRecap}
+                  disabled={sendingRecap || !recapEmail}
+                >
+                  {sendingRecap && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Send
+                </Button>
+              </div>
             </div>
 
             <div className="flex flex-col gap-3">

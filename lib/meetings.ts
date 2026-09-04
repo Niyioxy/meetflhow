@@ -11,6 +11,7 @@ import { triggerWebhooks } from "@/lib/webhooks";
 import { postMeetingToSlack } from "@/lib/integrations/slack";
 import { attributeActionItemsToSpeakers } from "@/lib/action-item-attribution";
 import { logMeetingEvent } from "@/lib/meeting-events";
+import { sendNoShowRecaps } from "@/lib/no-show-recap";
 import type { AttendeeSalary, CalculatedCost } from "@/types/cost";
 import type { SpeakerSegment } from "@/types/analysis";
 import type { TranscriptUtterance } from "@/lib/deepgram/transcribe";
@@ -383,6 +384,7 @@ export async function runAllMeetingAnalyses(
         url: `${process.env.NEXTAUTH_URL}/meetings/${updatedMeeting.id}`,
       }),
       autoPostToSlackIfEnabled(meetingId, updatedMeeting.workspaceId),
+      sendNoShowRecaps(meetingId).catch((error) => console.error("No-show recap failed", error)),
     ]);
   }
 

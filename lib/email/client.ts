@@ -34,6 +34,7 @@ function getTransport(): Transporter {
 interface SendEmailParams {
   from: string;
   to: string | string[];
+  replyTo?: string;
   subject: string;
   html?: string;
   react?: ReactElement;
@@ -47,6 +48,7 @@ export function getEmailClient() {
         return getTransport().sendMail({
           from: params.from,
           to: params.to,
+          ...(params.replyTo ? { replyTo: params.replyTo } : {}),
           subject: params.subject,
           html,
         });
