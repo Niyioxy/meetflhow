@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { upload } from "@vercel/blob/client";
-import { useMediaRecorder } from "@/hooks/use-media-recorder";
+import { useRecording } from "@/components/providers/recording-provider";
 import { useAudioLevel } from "@/hooks/use-audio-level";
 import { useWorkspace } from "@/components/providers/workspace-provider";
 import { Waveform } from "@/components/record/waveform";
@@ -64,7 +64,7 @@ export function Recorder({
     restorableDraft,
     restoreDraft,
     discardDraft,
-  } = useMediaRecorder();
+  } = useRecording();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const allowedContentTypes =
     ALLOWED_CONTENT_TYPES[(activeWorkspace?.organization_type as OrganizationType) ?? "general"];
