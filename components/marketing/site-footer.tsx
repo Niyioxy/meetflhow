@@ -26,9 +26,19 @@ export function SiteFooter() {
             Log in
           </Link>
         </nav>
-        <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} MeetFlhow. All rights reserved.
-        </p>
+        <div className="flex flex-col items-center gap-2 sm:items-end">
+          <div className="flex gap-4 text-xs text-muted-foreground">
+            <Link href="/privacy" className="transition-colors hover:text-foreground">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="transition-colors hover:text-foreground">
+              Terms of Service
+            </Link>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} MeetFlhow. All rights reserved.
+          </p>
+        </div>
       </div>
     </footer>
   );
