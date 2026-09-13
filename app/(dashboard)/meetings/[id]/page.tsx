@@ -14,6 +14,7 @@ import { MeetingCoachCard } from "@/components/meeting/meeting-coach-card";
 import { SentimentTimelineCard } from "@/components/meeting/sentiment-timeline-card";
 import { TranscriptCard } from "@/components/meeting/transcript-card";
 import { FollowUpEmailButton } from "@/components/meeting/follow-up-email-button";
+import { DownloadReportButton } from "@/components/meeting/download-report-button";
 import { MeetingCostCard } from "@/components/meeting/meeting-cost-card";
 import { ShareModal } from "@/components/meeting/share-modal";
 import { PostToSlackButton } from "@/components/meeting/post-to-slack-button";
@@ -49,6 +50,13 @@ export default async function MeetingDetailPage({
     ? computeUnsaidMetrics(meeting.transcript.utterances)
     : null;
 
+  const isMeeting = meeting.contentType === "meeting";
+  const primaryPoints: string[] = isMeeting
+    ? meeting.analysis?.decisions ?? []
+    : meeting.analysis?.highlights ?? [];
+  const primaryPointsLabel = isMeeting ? t("keyDecisions") : t("keyTakeaways");
+  const openQuestions = meeting.analysis?.openQuestions ?? [];
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -67,6 +75,30 @@ export default async function MeetingDetailPage({
           {meeting.analysis && <SentimentBadge sentiment={meeting.analysis.sentiment} />}
           {meeting.status === "ready" && <ShareModal meetingId={meeting.id} />}
           {meeting.status === "ready" && <FollowUpEmailButton meetingId={meeting.id} />}
+          {meeting.status === "ready" && meeting.analysis && (
+            <DownloadReportButton
+              report={{
+                title: meeting.title,
+                date: format(new Date(meeting.createdAt), "MMM d, yyyy · h:mm a"),
+                platform: meeting.platform,
+                durationMinutes: meeting.durationSeconds
+                  ? Math.round(meeting.durationSeconds / 60)
+                  : null,
+                sentiment: meeting.analysis.sentiment ?? null,
+                summary: meeting.analysis.summary ?? null,
+                primaryPointsLabel,
+                primaryPoints,
+                openQuestions,
+                actionItems: meeting.actionItems.map((item: ActionItem) => ({
+                  task: item.task,
+                  owner: item.owner,
+                  deadline: item.deadline,
+                  priority: item.priority,
+                  status: item.status,
+                })),
+              }}
+            />
+          )}
           {meeting.status === "ready" && meeting.workspaceId && (
             <PostToSlackButton meetingId={meeting.id} />
           )}
@@ -88,13 +120,6 @@ export default async function MeetingDetailPage({
       )}
 
       {(() => {
-        const isMeeting = meeting.contentType === "meeting";
-        const primaryPoints: string[] = isMeeting
-          ? meeting.analysis?.decisions ?? []
-          : meeting.analysis?.highlights ?? [];
-        const primaryTitle = isMeeting ? t("keyDecisions") : t("keyTakeaways");
-        const openQuestions = meeting.analysis?.openQuestions ?? [];
-
         if (!meeting.analysis || (primaryPoints.length === 0 && openQuestions.length === 0)) {
           return null;
         }
@@ -103,11 +128,11 @@ export default async function MeetingDetailPage({
         <div className="grid gap-6 sm:grid-cols-2">
           {primaryPoints.length > 0 &&
             (isMeeting ? (
-              <DecisionsCard meetingId={meeting.id} title={primaryTitle} decisions={primaryPoints} />
+              <DecisionsCard meetingId={meeting.id} title={primaryPointsLabel} decisions={primaryPoints} />
             ) : (
               <Card>
                 <CardHeader>
-                  <CardTitle>{primaryTitle}</CardTitle>
+                  <CardTitle>{primaryPointsLabel}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ul className="list-disc space-y-2 pl-5 text-sm">
