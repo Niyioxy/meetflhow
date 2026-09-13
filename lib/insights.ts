@@ -43,13 +43,18 @@ interface PeriodTotals {
 }
 
 async function getPeriodTotals(userId: string, start: Date, end: Date): Promise<PeriodTotals> {
+  // Meetings held / hours recorded count every content type — that's a fair
+  // activity measure regardless of what was recorded. Cost, meeting score,
+  // and decisions are corporate-meeting concepts with no equivalent for a
+  // sermon or podcast, so those stay scoped to content_type = 'meeting'
+  // rather than mixing in numbers that don't mean anything for the rest.
   const result = await db.execute(sql`
     SELECT
       COUNT(*)::int AS total_meetings,
       COALESCE(SUM(m.duration_seconds), 0)::int AS total_seconds,
-      COALESCE(SUM((m.calculated_cost->>'total_cost')::numeric), 0)::float AS total_cost,
-      AVG((a.meeting_score->>'overall_score')::numeric)::float AS avg_score,
-      COALESCE(SUM(COALESCE(array_length(a.decisions, 1), 0)), 0)::int AS decisions_made
+      COALESCE(SUM(CASE WHEN m.content_type = 'meeting' THEN (m.calculated_cost->>'total_cost')::numeric ELSE 0 END), 0)::float AS total_cost,
+      AVG(CASE WHEN m.content_type = 'meeting' THEN (a.meeting_score->>'overall_score')::numeric END)::float AS avg_score,
+      COALESCE(SUM(CASE WHEN m.content_type = 'meeting' THEN COALESCE(array_length(a.decisions, 1), 0) ELSE 0 END), 0)::int AS decisions_made
     FROM meetings m
     LEFT JOIN analysis a ON a.meeting_id = m.id
     WHERE m.user_id = ${userId}
@@ -74,6 +79,7 @@ async function getActionItemsGenerated(userId: string, start: Date, end: Date): 
     JOIN meetings m ON m.id = ai.meeting_id
     WHERE m.user_id = ${userId}
       AND m.status = 'ready'
+      AND m.content_type = 'meeting'
       AND m.created_at >= ${start}
       AND m.created_at < ${end}
   `);
@@ -119,6 +125,7 @@ async function getMostExpensiveMeeting(userId: string, start: Date, end: Date) {
     FROM meetings
     WHERE user_id = ${userId}
       AND status = 'ready'
+      AND content_type = 'meeting'
       AND calculated_cost IS NOT NULL
       AND created_at >= ${start}
       AND created_at < ${end}
@@ -136,6 +143,7 @@ async function getMostProductiveMeeting(userId: string, start: Date, end: Date) 
     JOIN analysis a ON a.meeting_id = m.id
     WHERE m.user_id = ${userId}
       AND m.status = 'ready'
+      AND m.content_type = 'meeting'
       AND a.meeting_score IS NOT NULL
       AND m.created_at >= ${start}
       AND m.created_at < ${end}
@@ -153,6 +161,7 @@ async function getScoreTrend(userId: string, start: Date, end: Date) {
     JOIN analysis a ON a.meeting_id = m.id
     WHERE m.user_id = ${userId}
       AND m.status = 'ready'
+      AND m.content_type = 'meeting'
       AND a.meeting_score IS NOT NULL
       AND m.created_at >= ${start}
       AND m.created_at < ${end}
