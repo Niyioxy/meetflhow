@@ -11,6 +11,7 @@ import { InsightSummaryCards } from "@/components/insights/insight-summary-cards
 import { TimeHeatmap } from "@/components/insights/time-heatmap";
 import { ActionItemHealth } from "@/components/insights/action-item-health";
 import { RecurringMeetingsCard } from "@/components/insights/recurring-meetings-card";
+import { SermonInsightsCard } from "@/components/insights/sermon-insights-card";
 import type { InsightPeriod, InsightsResponse, InsightsSummary } from "@/types/insights";
 
 type InsightsApiResponse = InsightsResponse & { summary: InsightsSummary | null };
@@ -107,6 +108,8 @@ export default function InsightsPage() {
           <ActionItemHealth period={completionPeriod} />
 
           <RecurringMeetingsCard />
+
+          <SermonInsightsCard />
         </>
       )}
     </div>
