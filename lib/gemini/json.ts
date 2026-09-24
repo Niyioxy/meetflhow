@@ -4,6 +4,8 @@ interface GeminiJSONOptions {
   systemInstruction?: string;
   responseSchema?: object;
   temperature?: number;
+  /** Overrides the small default below, for tasks that need more reasoning. */
+  thinkingBudget?: number;
 }
 
 export async function geminiJSON<T>(
@@ -23,7 +25,7 @@ export async function geminiJSON<T>(
       // Small non-zero budget: still fast, but leaves the model a little
       // room to reason on trickier transcripts (crosstalk, implied action
       // items) rather than cutting reasoning off entirely.
-      thinkingConfig: { thinkingBudget: 512 },
+      thinkingConfig: { thinkingBudget: options.thinkingBudget ?? 512 },
       ...(options.systemInstruction
         ? { systemInstruction: options.systemInstruction }
         : {}),

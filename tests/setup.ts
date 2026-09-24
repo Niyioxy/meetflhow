@@ -13,6 +13,9 @@ vi.mock("@/db", async () => {
 
 // Every external service the pipeline talks to. Tests set behaviour per
 // case via tests/helpers/mocks.ts.
+// The raw model call — modules that do their own post-processing (e.g.
+// Sermon Coach's evidence grounding) run for real on top of it.
+vi.mock("@/lib/gemini/json", () => ({ geminiJSON: vi.fn() }));
 vi.mock("@/lib/gemini/analyze", () => ({ analyzeTranscript: vi.fn() }));
 vi.mock("@/lib/gemini/coach", () => ({ generateMeetingCoachScore: vi.fn() }));
 vi.mock("@/lib/gemini/sentiment", () => ({ generateSentimentTimeline: vi.fn() }));

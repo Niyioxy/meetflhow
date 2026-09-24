@@ -89,3 +89,75 @@ export interface FollowUpEmailContent {
   body: string;
   preview_text: string;
 }
+
+/** A verbatim transcript quote backing a Sermon Coach observation. */
+export interface SermonCoachEvidence {
+  excerpt: string;
+  /** "m:ss" / "h:mm:ss" from the recording; null for pasted transcripts. */
+  timestamp: string | null;
+}
+
+export interface SermonCoachObservation {
+  point: string;
+  evidence: SermonCoachEvidence;
+}
+
+export const sermonCoachDimensionKeys = [
+  "bigIdeaClarity",
+  "scriptureGrounding",
+  "structureAndFlow",
+  "applicationStrength",
+  "illustrationEffectiveness",
+  "audienceAccessibility",
+  "engagementAndDelivery",
+] as const;
+export type SermonCoachDimensionKey = (typeof sermonCoachDimensionKeys)[number];
+
+export interface SermonCoachDimension {
+  /**
+   * 0-100, scored against the rubric in lib/sermon-coach/rubric.ts. Null
+   * when none of the model's quotes for it could be found in the sermon —
+   * an unsupported score is withheld rather than shown or averaged.
+   */
+  score: number | null;
+  insufficientEvidence: boolean;
+  summary: string;
+  evidence: SermonCoachEvidence[];
+}
+
+/**
+ * A factual or textual claim the preacher should double-check — tied to a
+ * passage actually cited in the sermon. Never a judgement on whether the
+ * claim is theologically correct.
+ */
+export interface SermonCoachClaim {
+  claim: string;
+  passage: string;
+  reason: string;
+  /** Where the claim is made. */
+  evidence: SermonCoachEvidence;
+  /** Where the passage is cited. */
+  passageEvidence: SermonCoachEvidence;
+}
+
+/** Private feedback for the preacher. Every observation is backed by a verbatim quote. */
+export interface SermonCoach {
+  version: 1;
+  generatedAt: string;
+  timestampsAvailable: boolean;
+  /** The workspace tradition lens used, if any. */
+  tradition: string | null;
+  /** Mean of the dimensions with grounded evidence; null if none had any. */
+  overallScore: number | null;
+  dimensions: Record<SermonCoachDimensionKey, SermonCoachDimension>;
+  strengths: SermonCoachObservation[];
+  improvements: SermonCoachObservation[];
+  unclearOrRepetitive: SermonCoachObservation[];
+  claimsToVerify: SermonCoachClaim[];
+  strongestMoment: SermonCoachObservation | null;
+  suggestedCuts: SermonCoachObservation[];
+  nextSermonFocus: SermonCoachObservation | null;
+  traditionNotes: SermonCoachObservation[];
+  /** Observations dropped because their quote couldn't be found in the transcript. */
+  omittedForMissingEvidence: number;
+}

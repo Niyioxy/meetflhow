@@ -23,6 +23,7 @@ import { OrganizationTypeSelect } from "@/components/workspace/organization-type
 import { BillingCard } from "@/components/workspace/billing-card";
 import { workspaceRoleEnum } from "@/db/schema";
 import { roleAtLeast } from "@/lib/workspace-roles";
+import { isContentTypeAllowed } from "@/lib/organization-types";
 import type { WorkspaceDetail } from "@/types/workspace";
 
 const INVITABLE_ROLES = workspaceRoleEnum.filter((r) => r !== "owner");
@@ -36,6 +37,8 @@ export function WorkspaceSettings() {
   const [savingName, setSavingName] = useState(false);
   const [organizationType, setOrganizationType] = useState("general");
   const [savingOrgType, setSavingOrgType] = useState(false);
+  const [tradition, setTradition] = useState("");
+  const [savingTradition, setSavingTradition] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<(typeof INVITABLE_ROLES)[number]>("member");
   const [inviting, setInviting] = useState(false);
@@ -56,6 +59,7 @@ export function WorkspaceSettings() {
       setDetail(data.workspace);
       setName(data.workspace.name);
       setOrganizationType(data.workspace.organization_type);
+      setTradition(data.workspace.sermon_coach_tradition ?? "");
     } catch {
       toast.error("Failed to load workspace");
     } finally {
@@ -112,6 +116,25 @@ export function WorkspaceSettings() {
       setOrganizationType(detail.organization_type);
     } finally {
       setSavingOrgType(false);
+    }
+  }
+
+  async function handleTraditionSave() {
+    if (!detail || tradition.trim() === (detail.sermon_coach_tradition ?? "")) return;
+    setSavingTradition(true);
+    try {
+      const res = await fetch(`/api/workspaces/${detail.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sermonCoachTradition: tradition.trim() }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(tradition.trim() ? "Sermon Coach tradition saved" : "Sermon Coach tradition cleared");
+      await loadDetail();
+    } catch {
+      toast.error("Failed to update Sermon Coach tradition");
+    } finally {
+      setSavingTradition(false);
     }
   }
 
@@ -252,6 +275,37 @@ export function WorkspaceSettings() {
           {savingOrgType && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </CardContent>
       </Card>
+
+      {isContentTypeAllowed(detail.organization_type, "sermon") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Sermon Coach tradition</CardTitle>
+            <CardDescription>
+              Optional. By default Sermon Coach gives feedback on communication only and never comments on
+              doctrine. Name a tradition (e.g. &ldquo;Reformed Baptist&rdquo;) to add a short, descriptive
+              section on how each sermon reads within it. Applies to new coaching only.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center gap-2">
+            <Input
+              value={tradition}
+              onChange={(e) => setTradition(e.target.value)}
+              placeholder="None — communication feedback only"
+              maxLength={80}
+              disabled={!canManage}
+            />
+            {canManage && (
+              <Button
+                onClick={handleTraditionSave}
+                disabled={savingTradition || tradition.trim() === (detail.sermon_coach_tradition ?? "")}
+              >
+                {savingTradition && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <BillingCard workspaceId={detail.id} plan={detail.plan} isOwner={isOwner} />
 

@@ -119,6 +119,7 @@ export async function getWorkspaceDetail(idOrSlug: string, userId: string): Prom
     avatar_color: workspace.avatarColor,
     role: member.role,
     owner_id: workspace.ownerId,
+    sermon_coach_tradition: workspace.sermonCoachTradition,
     members: memberRows.map((m) => ({
       id: m.id,
       user_id: m.userId,
@@ -145,7 +146,7 @@ function toInviteView(i: typeof workspaceInvites.$inferSelect): WorkspaceInviteV
 export async function updateWorkspace(
   workspaceId: string,
   userId: string,
-  patch: { name?: string; organizationType?: OrganizationType }
+  patch: { name?: string; organizationType?: OrganizationType; sermonCoachTradition?: string | null }
 ): Promise<WorkspaceSummary> {
   const member = await getWorkspaceMember(userId, workspaceId);
   requireRole(member, "admin");

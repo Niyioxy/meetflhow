@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { analyzeTranscript } from "@/lib/gemini/analyze";
 import { generateMeetingCoachScore } from "@/lib/gemini/coach";
+import { generateSermonCoach } from "@/lib/gemini/sermon-coach";
 import { generateSentimentTimeline } from "@/lib/gemini/sentiment";
 import { generateSermonGuide, generatePodcastNotes } from "@/lib/gemini/vertical-content";
 import { identifySpeakers, nameSpeakerLabels } from "@/lib/gemini/speakers";
@@ -231,6 +232,72 @@ async function runCoreAnalysis(
         .onConflictDoNothing({ target: tasks.actionItemId }),
     enqueueEffectsQuery(itemEffects),
   ]);
+}
+
+export type CoachKind = "meeting" | "sermon" | "none";
+
+/**
+ * Which coach suits a content type. Each coach's dimensions only mean
+ * something for its own kind of recording — Meeting Coach's decisiveness
+ * and talk-time balance are meaningless for a sermon or a podcast — so
+ * podcasts get no coach until a dedicated Podcast Coach exists.
+ */
+export function coachForContentType(contentType: ContentType): CoachKind {
+  switch (contentType) {
+    case "meeting":
+    case "training":
+      return "meeting";
+    case "sermon":
+      return "sermon";
+    case "podcast":
+      return "none";
+  }
+}
+
+/**
+ * Private preaching feedback (see lib/gemini/sermon-coach.ts). Unlike Meeting
+ * Coach it fires no webhook — nothing about it leaves the app.
+ */
+export async function runSermonCoach(meetingId: string) {
+  const row = await ensureAnalysisRow(meetingId);
+  if (row.sermonCoach) return row.sermonCoach;
+
+  const meeting = await db.query.meetings.findFirst({
+    where: (m, { eq }) => eq(m.id, meetingId),
+    with: { transcript: true, workspace: true },
+  });
+  if (!meeting?.transcript) {
+    throw new Error("Transcript not found for meeting");
+  }
+
+  const coach = await generateSermonCoach({
+    transcriptText: meeting.transcript.fullText,
+    utterances: meeting.transcript.utterances,
+    tradition: meeting.workspace?.sermonCoachTradition ?? null,
+  });
+
+  const [written] = await db
+    .update(analysis)
+    .set({ sermonCoach: coach })
+    .where(and(eq(analysis.id, row.id), isNull(analysis.sermonCoach)))
+    .returning({ sermonCoach: analysis.sermonCoach });
+  if (written?.sermonCoach) return written.sermonCoach;
+
+  // A concurrent run stored its result first — return that one.
+  const current = await db.query.analysis.findFirst({ where: (a, { eq }) => eq(a.id, row.id) });
+  return current?.sermonCoach ?? coach;
+}
+
+/** Runs whichever coach suits the content type, if any, bounded like the other supplementary analyses. */
+async function runCoach(meetingId: string, contentType: ContentType, transcriptText: string) {
+  switch (coachForContentType(contentType)) {
+    case "sermon":
+      return withTimeout(runSermonCoach(meetingId), SUPPLEMENTARY_TIMEOUT_MS, "Sermon coach");
+    case "meeting":
+      return withTimeout(runMeetingCoach(meetingId, transcriptText), SUPPLEMENTARY_TIMEOUT_MS, "Meeting coach");
+    case "none":
+      return null;
+  }
 }
 
 export async function runMeetingCoach(meetingId: string, transcriptText: string) {
@@ -456,7 +523,7 @@ export async function runAllMeetingAnalyses(
         console.error("Meeting analysis failed", error);
         return false;
       }),
-    settle(withTimeout(runMeetingCoach(meetingId, transcriptText), SUPPLEMENTARY_TIMEOUT_MS, "Meeting coach")),
+    settle(runCoach(meetingId, meetingRow.contentType, transcriptText)),
     settle(
       withTimeout(
         runSpeakerIdentification(meetingId, transcriptText, attendees, utterances, voiceMatches),
@@ -594,7 +661,14 @@ export async function getMeetingDetail(meetingId: string, userId: string) {
     const membership = await db.query.workspaceMembers.findFirst({
       where: (m, { and, eq }) => and(eq(m.workspaceId, meeting.workspaceId!), eq(m.userId, userId)),
     });
-    if (membership) return meeting;
+    if (membership) {
+      // Sermon Coach is private to the preacher: workspace members can open
+      // a shared sermon, but never its coaching — stripped here so no
+      // caller of this function can leak it.
+      return meeting.analysis
+        ? { ...meeting, analysis: { ...meeting.analysis, sermonCoach: null } }
+        : meeting;
+    }
   }
 
   return null;

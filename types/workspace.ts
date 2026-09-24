@@ -32,6 +32,8 @@ export interface WorkspaceInviteView {
 
 export interface WorkspaceDetail extends WorkspaceSummary {
   owner_id: string;
+  /** Optional tradition lens for Sermon Coach; null = communication feedback only. */
+  sermon_coach_tradition: string | null;
   members: WorkspaceMemberView[];
   pending_invites: WorkspaceInviteView[];
 }

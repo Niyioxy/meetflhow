@@ -8,6 +8,14 @@ import { organizationTypeEnum } from "@/db/schema";
 const patchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   organizationType: z.enum(organizationTypeEnum).optional(),
+  // Empty string clears it (back to communication-only coaching).
+  sermonCoachTradition: z
+    .string()
+    .trim()
+    .max(80)
+    .nullable()
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v || null)),
 });
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {

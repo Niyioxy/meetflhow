@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { format } from "date-fns";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
-import { getMeetingDetail } from "@/lib/meetings";
+import { coachForContentType, getMeetingDetail } from "@/lib/meetings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { PlatformBadge } from "@/components/dashboard/platform-badge";
@@ -11,6 +11,7 @@ import { ActionItemsCard, type ActionItem } from "@/components/meeting/action-it
 import { ProcessingBanner } from "@/components/meeting/processing-banner";
 import { RetryButton } from "@/components/meeting/retry-button";
 import { MeetingCoachCard } from "@/components/meeting/meeting-coach-card";
+import { SermonCoachCard } from "@/components/meeting/sermon-coach-card";
 import { SentimentTimelineCard } from "@/components/meeting/sentiment-timeline-card";
 import { TranscriptCard } from "@/components/meeting/transcript-card";
 import { FollowUpEmailButton } from "@/components/meeting/follow-up-email-button";
@@ -238,12 +239,25 @@ export default async function MeetingDetailPage({
           />
         )}
 
-      {meeting.status === "ready" && meeting.transcript && (
-        <MeetingCoachCard
-          meetingId={meeting.id}
-          initialScore={meeting.analysis?.meetingScore ?? null}
-        />
-      )}
+      {meeting.status === "ready" &&
+        meeting.transcript &&
+        coachForContentType(meeting.contentType) === "meeting" && (
+          <MeetingCoachCard
+            meetingId={meeting.id}
+            initialScore={meeting.analysis?.meetingScore ?? null}
+          />
+        )}
+
+      {/* Private to the preacher: workspace members viewing a shared sermon don't see it. */}
+      {meeting.status === "ready" &&
+        meeting.transcript &&
+        coachForContentType(meeting.contentType) === "sermon" &&
+        meeting.userId === session!.user.id && (
+          <SermonCoachCard
+            meetingId={meeting.id}
+            initialCoach={meeting.analysis?.sermonCoach ?? null}
+          />
+        )}
 
       {meeting.status === "ready" && meeting.transcript && (
         <SentimentTimelineCard

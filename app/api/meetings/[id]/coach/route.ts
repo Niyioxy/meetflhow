@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getMeetingDetail, runMeetingCoach } from "@/lib/meetings";
+import { coachForContentType, getMeetingDetail, runMeetingCoach } from "@/lib/meetings";
 
 export async function POST(
   _req: Request,
@@ -14,6 +14,12 @@ export async function POST(
   const meeting = await getMeetingDetail(params.id, session.user.id);
   if (!meeting) {
     return NextResponse.json({ error: "Meeting not found" }, { status: 404 });
+  }
+  if (coachForContentType(meeting.contentType) !== "meeting") {
+    return NextResponse.json(
+      { error: "Meeting Coach is only available for meetings and trainings" },
+      { status: 400 }
+    );
   }
   if (!meeting.transcript) {
     return NextResponse.json(

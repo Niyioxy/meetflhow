@@ -17,6 +17,7 @@ import type { AdapterAccountType } from "next-auth/adapters";
 import { relations } from "drizzle-orm";
 import type {
   MeetingCoachScore,
+  SermonCoach,
   SentimentTimeline,
   SpeakerSegment,
   VerticalContent,
@@ -100,6 +101,10 @@ export const workspaces = pgTable("workspaces", {
     .references(() => users.id),
   plan: text("plan").$type<WorkspacePlan>().notNull().default("free"),
   organizationType: text("organization_type").$type<OrganizationType>().notNull().default("general"),
+  // Optional theological tradition (e.g. "Reformed Baptist") Sermon Coach
+  // may use as an extra lens. Null means Sermon Coach assesses
+  // communication only and never comments on doctrine.
+  sermonCoachTradition: text("sermon_coach_tradition"),
   avatarColor: text("avatar_color"),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
@@ -401,6 +406,10 @@ export const analysis = pgTable("analysis", {
   highlights: text("highlights").array(),
   sentiment: text("sentiment").$type<Sentiment>().notNull().default("neutral"),
   meetingScore: jsonb("meeting_score").$type<MeetingCoachScore>(),
+  // Private preaching feedback for sermons — never shown in public shares or
+  // to anyone but the meeting's owner. Separate from meetingScore, whose
+  // dimensions (decisiveness, talk-time balance) don't apply to a sermon.
+  sermonCoach: jsonb("sermon_coach").$type<SermonCoach>(),
   sentimentTimeline: jsonb("sentiment_timeline").$type<SentimentTimeline>(),
   verticalContent: jsonb("vertical_content").$type<VerticalContent>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
