@@ -23,7 +23,9 @@ export function unlockCookieName(token: string): string {
 }
 
 export function unlockCookieValue(token: string): string {
-  const secret = process.env.NEXTAUTH_SECRET ?? "";
+  const secret = process.env.NEXTAUTH_SECRET;
+  // An empty HMAC key would make unlock cookies forgeable by anyone.
+  if (!secret) throw new Error("NEXTAUTH_SECRET is not set");
   return createHmac("sha256", secret).update(token).digest("hex");
 }
 

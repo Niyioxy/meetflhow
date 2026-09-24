@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
+import { checkCronSecret } from "@/lib/internal-auth";
 import { and, eq, gte, isNull, lte } from "drizzle-orm";
 import { db } from "@/db";
 import { scheduledMeetings, users } from "@/db/schema";
 import { sendMeetingReminderEmail } from "@/lib/email/reminder";
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = checkCronSecret(req);
+  if (denied) return denied;
 
   const now = Date.now();
   const windowStart = new Date(now + 25 * 60_000);

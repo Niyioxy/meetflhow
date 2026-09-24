@@ -6,6 +6,14 @@ function getServiceUrl(): string {
   return url;
 }
 
+function getServiceSecret(): string {
+  const secret = process.env.VOICE_SERVICE_SECRET;
+  if (!secret) {
+    throw new Error("VOICE_SERVICE_SECRET is not set");
+  }
+  return secret;
+}
+
 const EMBED_TIMEOUT_MS = 8000;
 
 /** Sends an audio buffer to the voice-service and returns its 192-dim speaker embedding. */
@@ -17,9 +25,7 @@ export async function getEmbedding(audioBuffer: Buffer, filename = "audio.wav"):
   try {
     res = await fetch(`${getServiceUrl()}/embed`, {
       method: "POST",
-      headers: process.env.VOICE_SERVICE_SECRET
-        ? { Authorization: `Bearer ${process.env.VOICE_SERVICE_SECRET}` }
-        : undefined,
+      headers: { Authorization: `Bearer ${getServiceSecret()}` },
       body: formData,
       signal: AbortSignal.timeout(EMBED_TIMEOUT_MS),
     });
