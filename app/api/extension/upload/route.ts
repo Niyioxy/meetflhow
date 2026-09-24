@@ -95,13 +95,14 @@ export async function POST(req: Request) {
     wordCount: wordCount(transcriptionText),
   });
 
-  if (durationSeconds) {
-    await db.update(meetings).set({ durationSeconds }).where(eq(meetings.id, meeting.id));
-  }
+  await db
+    .update(meetings)
+    .set({ status: "analyzing", ...(durationSeconds ? { durationSeconds } : {}) })
+    .where(eq(meetings.id, meeting.id));
 
   try {
-    await runAllMeetingAnalyses(meeting.id, transcriptionText);
-    return NextResponse.json({ meetingId: meeting.id, status: "ready" });
+    const outcome = await runAllMeetingAnalyses(meeting.id, transcriptionText);
+    return NextResponse.json({ meetingId: meeting.id, status: outcome === "ready" ? "ready" : "analyzing" });
   } catch {
     return NextResponse.json({ meetingId: meeting.id, status: "failed" }, { status: 500 });
   }

@@ -7,6 +7,7 @@ import { getWorkspaceMember, getWorkspaceOrThrow } from "@/lib/workspace-auth";
 import { isContentTypeAllowed } from "@/lib/organization-types";
 import { canRecordMeeting, FREE_TIER_MONTHLY_RECORDINGS } from "@/lib/billing";
 import { logMeetingEvent } from "@/lib/meeting-events";
+import { requeueMeeting } from "@/lib/processing/lease";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -65,6 +66,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (meeting.status === "ready") {
+      return NextResponse.json({ meetingId: meeting.id, status: "ready" });
+    }
+    if (meeting.status === "failed") {
+      await requeueMeeting(meeting.id, "analyzing");
+    }
+
     targetMeetingId = meeting.id;
     textToAnalyze = meeting.transcript.fullText;
   } else {
@@ -100,7 +108,8 @@ export async function POST(req: Request) {
         title: title?.trim() || "Pasted transcript",
         platform: platform || "other",
         contentType: contentType ?? "meeting",
-        status: "transcribing",
+        // Already has its transcript, so it's queued straight for analysis.
+        status: "analyzing",
         workspaceId: workspaceId ?? null,
         sharedWithWorkspace: workspaceId ? Boolean(sharedWithWorkspace) : false,
       })
@@ -120,7 +129,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    await runAllMeetingAnalyses(targetMeetingId, textToAnalyze);
+    const outcome = await runAllMeetingAnalyses(targetMeetingId, textToAnalyze);
+    if (outcome !== "ready") {
+      // Another request is already analyzing this meeting.
+      return NextResponse.json({ meetingId: targetMeetingId, status: "analyzing" }, { status: 202 });
+    }
     return NextResponse.json({ meetingId: targetMeetingId, status: "ready" });
   } catch (error) {
     console.error("Analysis failed", error);

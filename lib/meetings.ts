@@ -1,5 +1,14 @@
+import { randomUUID } from "crypto";
 import { db } from "@/db";
-import { actionItems, analysis, meetings, transcripts, tasks, type ContentType } from "@/db/schema";
+import {
+  actionItems,
+  analysis,
+  meetingEvents,
+  meetings,
+  transcripts,
+  tasks,
+  type ContentType,
+} from "@/db/schema";
 import { analyzeTranscript } from "@/lib/gemini/analyze";
 import { generateMeetingCoachScore } from "@/lib/gemini/coach";
 import { generateSentimentTimeline } from "@/lib/gemini/sentiment";
@@ -7,16 +16,19 @@ import { generateSermonGuide, generatePodcastNotes } from "@/lib/gemini/vertical
 import { identifySpeakers, nameSpeakerLabels } from "@/lib/gemini/speakers";
 import { generateCostVerdict } from "@/lib/gemini/cost-benchmark";
 import { calculateMeetingCost } from "@/lib/cost";
-import { triggerWebhooks } from "@/lib/webhooks";
-import { postMeetingToSlack } from "@/lib/integrations/slack";
+import { webhookEffects } from "@/lib/webhooks";
 import { attributeActionItemsToSpeakers } from "@/lib/action-item-attribution";
 import { logMeetingEvent } from "@/lib/meeting-events";
-import { sendNoShowRecaps } from "@/lib/no-show-recap";
+import { noShowRecapEffects } from "@/lib/no-show-recap";
+import { atomic } from "@/lib/processing/atomic";
+import { claimStage, isLeaseLostError, leaseFence, releaseStage } from "@/lib/processing/lease";
+import { enqueueEffectsQuery, type EffectSpec } from "@/lib/processing/effects";
+import { dispatchEffects } from "@/lib/processing/dispatch";
 import type { AttendeeSalary, CalculatedCost } from "@/types/cost";
 import type { SpeakerSegment } from "@/types/analysis";
 import type { TranscriptUtterance } from "@/lib/deepgram/transcribe";
 import type { VoiceMatch } from "@/lib/voice-identification";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 const SUPPLEMENTARY_TIMEOUT_MS = 40_000;
 
@@ -101,122 +113,169 @@ async function buildDiarizedSegments(
   });
 }
 
-async function getOrCreateAnalysisRow(meetingId: string) {
-  const existing = await db.query.analysis.findFirst({
-    where: (a, { eq }) => eq(a.meetingId, meetingId),
-  });
-  if (existing) return existing;
-
-  const [created] = await db
+/**
+ * The meeting's analysis row, created empty if it doesn't exist yet — as a
+ * single atomic upsert, so concurrent callers get the same row rather than
+ * racing to insert two.
+ */
+async function ensureAnalysisRow(meetingId: string) {
+  const [row] = await db
     .insert(analysis)
     .values({ meetingId, summary: "" })
+    .onConflictDoUpdate({
+      target: analysis.meetingId,
+      set: { meetingId: sql`excluded.meeting_id` },
+    })
     .returning();
-  return created;
+  return row;
 }
 
-export async function runMeetingAnalysis(
+type CoreAnalysisResult = Awaited<ReturnType<typeof analyzeTranscript>>;
+
+/**
+ * The core analysis: summary, decisions, action items and a task mirroring
+ * each action item. Everything it produces — plus the action_item.created
+ * webhook deliveries, queued in the ledger and sent only after commit — is
+ * written in one transaction, fenced by the processing lease so a superseded
+ * attempt can't write at all. Idempotent: once complete it returns without
+ * calling Gemini again.
+ */
+async function runCoreAnalysis(
   meetingId: string,
+  attemptId: string,
   transcriptText: string,
-  contentType: ContentType = "meeting"
-) {
-  const row = await getOrCreateAnalysisRow(meetingId);
-  if (row.summary) {
-    return {
-      summary: row.summary,
-      decisions: row.decisions,
-      openQuestions: row.openQuestions,
-      highlights: row.highlights,
-      sentiment: row.sentiment,
-    };
+  meeting: { userId: string; workspaceId: string | null; contentType: ContentType }
+): Promise<void> {
+  const row = await ensureAnalysisRow(meetingId);
+  if (row.coreCompletedAt) return;
+
+  const existingItems = await db.query.actionItems.findMany({
+    where: (a, { eq }) => eq(a.meetingId, meetingId),
+    orderBy: (a, { asc }) => [asc(a.createdAt), asc(a.id)],
+  });
+
+  // A summary *and* action items with no completion mark is output from
+  // before this was transactional, whose run died before creating the tasks
+  // or reaching "ready". Finish it from what's there instead of paying for —
+  // and diverging from — a second Gemini run.
+  let result: CoreAnalysisResult | null = null;
+  if (!(row.summary && existingItems.length > 0)) {
+    result = await analyzeTranscript(transcriptText, meeting.contentType);
   }
 
-  const result = await analyzeTranscript(transcriptText, contentType);
-
-  await db
-    .update(analysis)
-    .set({
-      summary: result.summary,
-      decisions: result.decisions,
-      openQuestions: result.openQuestions,
-      highlights: result.highlights,
-      sentiment: result.sentiment,
-    })
-    .where(eq(analysis.id, row.id));
-
-  if (result.actionItems.length > 0) {
-    const createdItems = await db
-      .insert(actionItems)
-      .values(
-        result.actionItems.map((item) => ({
+  // Only this pipeline creates action items, so any that exist are this
+  // meeting's earlier output. Keep them (someone may already be working on
+  // them) and never add a second set.
+  const newItems =
+    existingItems.length > 0 || !result
+      ? []
+      : result.actionItems.map((item) => ({
+          id: randomUUID(),
           meetingId,
           task: item.task,
           owner: item.owner,
           deadline: item.deadline,
           priority: item.priority,
-        }))
-      )
-      .returning();
+          dueDate: null,
+        }));
+  const items = newItems.length > 0 ? newItems : existingItems;
 
-    const meeting = await db.query.meetings.findFirst({
-      where: (m, { eq }) => eq(m.id, meetingId),
-    });
-    if (meeting) {
-      await db.insert(tasks).values(
-        result.actionItems.map((item) => ({
-          userId: meeting.userId,
-          meetingId,
-          title: item.task,
-          priority: item.priority,
-          status: "backlog" as const,
-          assignedTo: item.owner,
-        }))
-      );
+  const itemEffects = await webhookEffects(
+    meeting.workspaceId,
+    meetingId,
+    "action_item.created",
+    items.map((item) => ({
+      key: item.id,
+      data: {
+        action_item_id: item.id,
+        task: item.task,
+        owner: item.owner,
+        due_date: item.dueDate,
+        meeting_id: meetingId,
+      },
+    }))
+  );
 
-      await Promise.all(
-        createdItems.map((item) =>
-          triggerWebhooks(meeting.workspaceId, "action_item.created", {
-            action_item_id: item.id,
-            task: item.task,
-            owner: item.owner,
-            due_date: item.dueDate,
-            meeting_id: meetingId,
-          })
+  await atomic([
+    leaseFence(meetingId, attemptId),
+    db
+      .update(analysis)
+      .set({
+        ...(result
+          ? {
+              summary: result.summary,
+              decisions: result.decisions,
+              openQuestions: result.openQuestions,
+              highlights: result.highlights,
+              sentiment: result.sentiment,
+            }
+          : {}),
+        coreCompletedAt: sql`now()`,
+      })
+      .where(and(eq(analysis.id, row.id), isNull(analysis.coreCompletedAt))),
+    newItems.length > 0 && db.insert(actionItems).values(newItems),
+    items.length > 0 &&
+      db
+        .insert(tasks)
+        .values(
+          items.map((item) => ({
+            userId: meeting.userId,
+            meetingId,
+            actionItemId: item.id,
+            title: item.task,
+            priority: item.priority,
+            status: "backlog" as const,
+            assignedTo: item.owner,
+          }))
         )
-      );
-    }
-  }
-
-  return result;
+        .onConflictDoNothing({ target: tasks.actionItemId }),
+    enqueueEffectsQuery(itemEffects),
+  ]);
 }
 
 export async function runMeetingCoach(meetingId: string, transcriptText: string) {
-  const row = await getOrCreateAnalysisRow(meetingId);
+  const row = await ensureAnalysisRow(meetingId);
   if (row.meetingScore) return row.meetingScore;
 
   const score = await generateMeetingCoachScore(transcriptText);
-  await db.update(analysis).set({ meetingScore: score }).where(eq(analysis.id, row.id));
 
   const meeting = await db.query.meetings.findFirst({
     where: (m, { eq }) => eq(m.id, meetingId),
   });
-  await triggerWebhooks(meeting?.workspaceId, "meeting.scored", {
-    meeting_id: meetingId,
-    title: meeting?.title ?? null,
-    overall_score: score.overall_score,
-  });
+  const effects = await webhookEffects(meeting?.workspaceId, meetingId, "meeting.scored", [
+    {
+      key: meetingId,
+      data: {
+        meeting_id: meetingId,
+        title: meeting?.title ?? null,
+        overall_score: score.overall_score,
+      },
+    },
+  ]);
+
+  // The ledger key is per meeting, so even if two scorings race, the
+  // meeting.scored webhook goes out once.
+  await atomic([
+    db
+      .update(analysis)
+      .set({ meetingScore: score })
+      .where(and(eq(analysis.id, row.id), isNull(analysis.meetingScore))),
+    enqueueEffectsQuery(effects),
+  ]);
+  await dispatchEffects({ keys: effects.map((e) => e.key) });
 
   return score;
 }
 
 export async function runSentimentTimeline(meetingId: string, transcriptText: string) {
-  const row = await getOrCreateAnalysisRow(meetingId);
+  const row = await ensureAnalysisRow(meetingId);
   if (row.sentimentTimeline) return row.sentimentTimeline;
 
   const timeline = await generateSentimentTimeline(transcriptText);
   await db
     .update(analysis)
     .set({ sentimentTimeline: timeline })
-    .where(eq(analysis.id, row.id));
+    .where(and(eq(analysis.id, row.id), isNull(analysis.sentimentTimeline)));
   return timeline;
 }
 
@@ -231,7 +290,7 @@ export async function runVerticalContent(
   transcriptText: string,
   contentType: ContentType
 ) {
-  const row = await getOrCreateAnalysisRow(meetingId);
+  const row = await ensureAnalysisRow(meetingId);
   if (row.verticalContent) return row.verticalContent;
 
   let result;
@@ -243,7 +302,10 @@ export async function runVerticalContent(
     throw new Error(`Vertical content isn't available for content type "${contentType}"`);
   }
 
-  await db.update(analysis).set({ verticalContent: result }).where(eq(analysis.id, row.id));
+  await db
+    .update(analysis)
+    .set({ verticalContent: result })
+    .where(and(eq(analysis.id, row.id), isNull(analysis.verticalContent)));
   return result;
 }
 
@@ -262,6 +324,8 @@ export async function runSpeakerIdentification(
   }
   if (transcript.speakerSegments) return transcript.speakerSegments;
 
+  const unset = and(eq(transcripts.id, transcript.id), isNull(transcripts.speakerSegments));
+
   if (utterances && utterances.length > 0) {
     const segments = await buildDiarizedSegments(utterances, attendees, voiceMatches ?? {});
     const method = segments.some((s) => s.identificationMethod === "voice_match")
@@ -270,40 +334,91 @@ export async function runSpeakerIdentification(
     await db
       .update(transcripts)
       .set({ speakerSegments: segments, speakerIdentificationMethod: method })
-      .where(eq(transcripts.id, transcript.id));
+      .where(unset);
     return segments;
   }
 
   const segments = await identifySpeakers(transcriptText, attendees);
-  await db
-    .update(transcripts)
-    .set({ speakerSegments: segments })
-    .where(eq(transcripts.id, transcript.id));
+  await db.update(transcripts).set({ speakerSegments: segments }).where(unset);
   return segments;
 }
 
-async function autoPostToSlackIfEnabled(meetingId: string, workspaceId: string | null) {
-  if (!workspaceId) return;
+async function slackAutoPostEffects(
+  meetingId: string,
+  workspaceId: string | null
+): Promise<EffectSpec[]> {
+  if (!workspaceId) return [];
 
-  try {
-    const settings = await db.query.slackPostSettings.findFirst({
-      where: (s, { eq }) => eq(s.workspaceId, workspaceId),
-    });
-    if (!settings || (!settings.autoPostSummary && !settings.autoPostActionItems)) return;
+  const settings = await db.query.slackPostSettings.findFirst({
+    where: (s, { eq }) => eq(s.workspaceId, workspaceId),
+  });
+  if (!settings || (!settings.autoPostSummary && !settings.autoPostActionItems)) return [];
 
-    await postMeetingToSlack(meetingId, {
-      includeSummary: settings.autoPostSummary,
-      includeActionItems: settings.autoPostActionItems,
-    });
-  } catch (error) {
-    console.error("Auto-post to Slack failed", error);
-  }
+  return [
+    {
+      key: `slack-auto-post:${meetingId}`,
+      kind: "slack_auto_post",
+      meetingId,
+      payload: {
+        meetingId,
+        includeSummary: settings.autoPostSummary,
+        includeActionItems: settings.autoPostActionItems,
+      },
+    },
+  ];
 }
+
+/** Everything a meeting reaching "ready" should notify: webhooks, Slack, no-show recaps. */
+async function completionEffects(meeting: {
+  id: string;
+  title: string;
+  platform: string;
+  durationSeconds: number | null;
+  workspaceId: string | null;
+}): Promise<EffectSpec[]> {
+  const analysisRow = await db.query.analysis.findFirst({
+    where: (a, { eq }) => eq(a.meetingId, meeting.id),
+  });
+
+  const [webhookOut, slackOut, noShowOut] = await Promise.all([
+    webhookEffects(meeting.workspaceId, meeting.id, "meeting.completed", [
+      {
+        key: meeting.id,
+        data: {
+          meeting_id: meeting.id,
+          title: meeting.title,
+          platform: meeting.platform,
+          duration_seconds: meeting.durationSeconds,
+          summary: analysisRow?.summary ?? null,
+          url: `${process.env.NEXTAUTH_URL}/meetings/${meeting.id}`,
+        },
+      },
+    ]),
+    slackAutoPostEffects(meeting.id, meeting.workspaceId),
+    noShowRecapEffects(meeting.id).catch((error) => {
+      console.error("No-show recap detection failed", error);
+      return [] as EffectSpec[];
+    }),
+  ]);
+  return [...webhookOut, ...slackOut, ...noShowOut];
+}
+
+export type AnalysisRunOutcome =
+  /** This call ran the analysis and the meeting is ready. */
+  | "ready"
+  /** Nothing to do: already running elsewhere, already finished, or not queued. */
+  | "skipped"
+  /** Another attempt took the meeting over before this one could commit. */
+  | "superseded";
 
 /**
  * Runs the core analysis plus the three supplementary AI analyses in parallel.
  * Supplementary failures are logged and swallowed so one flaky call doesn't
  * mark the whole meeting as failed when the core analysis succeeded.
+ *
+ * Only runs if it can claim the meeting's "analyzing" stage (see
+ * lib/processing/lease.ts), so duplicate triggers are no-ops. Throws if the
+ * core analysis fails, after marking the meeting failed.
  */
 export async function runAllMeetingAnalyses(
   meetingId: string,
@@ -311,16 +426,18 @@ export async function runAllMeetingAnalyses(
   attendees: string[] = [],
   utterances?: TranscriptUtterance[],
   voiceMatches?: Record<string, VoiceMatch>
-) {
-  await db.update(meetings).set({ status: "analyzing" }).where(eq(meetings.id, meetingId));
+): Promise<AnalysisRunOutcome> {
+  const attemptId = await claimStage(meetingId, "analyzing");
+  if (!attemptId) {
+    console.info(`Analysis of meeting ${meetingId} not claimed: running elsewhere, done, or not queued`);
+    return "skipped";
+  }
   await logMeetingEvent(meetingId, "analyzing");
-
-  await getOrCreateAnalysisRow(meetingId);
 
   const meetingRow = await db.query.meetings.findFirst({
     where: (m, { eq }) => eq(m.id, meetingId),
   });
-  const contentType = meetingRow?.contentType ?? "meeting";
+  if (!meetingRow) return "skipped";
 
   const settle = (p: Promise<unknown>) =>
     p.catch((error) => {
@@ -330,7 +447,7 @@ export async function runAllMeetingAnalyses(
 
   const [coreOk] = await Promise.all([
     withTimeout(
-      runMeetingAnalysis(meetingId, transcriptText, contentType),
+      runCoreAnalysis(meetingId, attemptId, transcriptText, meetingRow),
       SUPPLEMENTARY_TIMEOUT_MS,
       "Meeting analysis"
     )
@@ -352,45 +469,51 @@ export async function runAllMeetingAnalyses(
     ),
   ]);
 
-  const [updatedMeeting] = await db
-    .update(meetings)
-    .set({ status: coreOk ? "ready" : "failed" })
-    .where(eq(meetings.id, meetingId))
-    .returning();
+  try {
+    if (coreOk) {
+      const transcriptRow = await db.query.transcripts.findFirst({
+        where: (t, { eq }) => eq(t.meetingId, meetingId),
+      });
+      await attributeActionItemsToSpeakers(meetingId, transcriptRow?.speakerSegments);
 
-  await logMeetingEvent(
-    meetingId,
-    coreOk ? "ready" : "failed",
-    coreOk ? undefined : "Meeting analysis failed"
-  );
-
-  if (coreOk && updatedMeeting) {
-    const analysisRow = await db.query.analysis.findFirst({
-      where: (a, { eq }) => eq(a.meetingId, meetingId),
-    });
-
-    const transcriptRow = await db.query.transcripts.findFirst({
-      where: (t, { eq }) => eq(t.meetingId, meetingId),
-    });
-    await attributeActionItemsToSpeakers(meetingId, transcriptRow?.speakerSegments);
-
-    await Promise.all([
-      triggerWebhooks(updatedMeeting.workspaceId, "meeting.completed", {
-        meeting_id: updatedMeeting.id,
-        title: updatedMeeting.title,
-        platform: updatedMeeting.platform,
-        duration_seconds: updatedMeeting.durationSeconds,
-        summary: analysisRow?.summary ?? null,
-        url: `${process.env.NEXTAUTH_URL}/meetings/${updatedMeeting.id}`,
-      }),
-      autoPostToSlackIfEnabled(meetingId, updatedMeeting.workspaceId),
-      sendNoShowRecaps(meetingId).catch((error) => console.error("No-show recap failed", error)),
-    ]);
+      // "ready" and the notifications it owes commit together, so a crash
+      // right after can't lose them — they stay queued in the ledger.
+      const effects = await completionEffects(meetingRow);
+      await atomic([
+        leaseFence(meetingId, attemptId),
+        releaseStage(meetingId, attemptId, "ready"),
+        db.insert(meetingEvents).values({ meetingId, event: "ready" }),
+        enqueueEffectsQuery(effects),
+      ]);
+    } else {
+      await atomic([
+        leaseFence(meetingId, attemptId),
+        releaseStage(meetingId, attemptId, "failed"),
+        db.insert(meetingEvents).values({
+          meetingId,
+          event: "failed",
+          detail: "Meeting analysis failed",
+        }),
+      ]);
+    }
+  } catch (error) {
+    if (isLeaseLostError(error)) {
+      console.warn(`Analysis attempt ${attemptId} for meeting ${meetingId} was superseded`);
+      return "superseded";
+    }
+    throw error;
   }
 
   if (!coreOk) {
     throw new Error("Meeting analysis failed");
   }
+
+  // After commit: deliver this run's effects, plus any a crashed earlier run
+  // left queued. Each ledger entry is sent at most once successfully.
+  await dispatchEffects({ meetingId }).catch((error) =>
+    console.error("Dispatching meeting effects failed", error)
+  );
+  return "ready";
 }
 
 export async function saveAttendeeSalaries(meetingId: string, attendees: AttendeeSalary[]) {

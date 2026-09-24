@@ -178,6 +178,14 @@ export const meetings = pgTable("meetings", {
   // process-transcript deletes the blob). Kept so a failed transcription
   // can be retried without losing the recording.
   blobUrl: text("blob_url"),
+  // Processing lease (see lib/processing/lease.ts). `status` says which stage
+  // the meeting is in; these say whether a worker currently owns that stage.
+  // A null attempt id means the stage is queued; a non-null one is only
+  // honoured until processingStartedAt + the lease duration, after which the
+  // stage can be reclaimed. Deliberately plain columns with no FK — see the
+  // note in lib/no-show-recap.ts about relational type complexity here.
+  processingAttemptId: uuid("processing_attempt_id"),
+  processingStartedAt: timestamp("processing_started_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -238,6 +246,7 @@ export const transcripts = pgTable("transcripts", {
   id: uuid("id").defaultRandom().primaryKey(),
   meetingId: uuid("meeting_id")
     .notNull()
+    .unique("transcripts_meeting_id_unique")
     .references(() => meetings.id, { onDelete: "cascade" }),
   fullText: text("full_text").notNull(),
   language: text("language"),
@@ -380,8 +389,13 @@ export const analysis = pgTable("analysis", {
   id: uuid("id").defaultRandom().primaryKey(),
   meetingId: uuid("meeting_id")
     .notNull()
+    .unique("analysis_meeting_id_unique")
     .references(() => meetings.id, { onDelete: "cascade" }),
   summary: text("summary").notNull(),
+  // Set in the same transaction that persists the summary, action items and
+  // their tasks — so "has a summary" can no longer be mistaken for "the core
+  // analysis finished" after a crash midway through.
+  coreCompletedAt: timestamp("core_completed_at"),
   decisions: text("decisions").array().notNull().default([]),
   openQuestions: text("open_questions").array().notNull().default([]),
   highlights: text("highlights").array(),
@@ -473,6 +487,13 @@ export const tasks = pgTable("tasks", {
   meetingId: uuid("meeting_id").references(() => meetings.id, {
     onDelete: "set null",
   }),
+  // The action item this task mirrors, when it was created from one. Unique
+  // so re-running analysis (or the "create tasks" button) can't mirror the
+  // same action item twice — matching by title can't do that, since two
+  // real action items can share identical text.
+  actionItemId: uuid("action_item_id")
+    .unique("tasks_action_item_id_unique")
+    .references(() => actionItems.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   description: text("description"),
   priority: text("priority").$type<Priority>().notNull().default("medium"),
@@ -803,6 +824,58 @@ export const transcriptChunks = pgTable(
       "hnsw",
       table.embedding.op("vector_cosine_ops")
     ),
+    transcriptChunkUnique: unique("transcript_chunks_transcript_chunk_unique").on(
+      table.transcriptId,
+      table.chunkIndex
+    ),
+  })
+);
+
+export const outboundEffectStatusEnum = [
+  "pending",
+  "sending",
+  "succeeded",
+  "failed",
+  "cancelled",
+] as const;
+export type OutboundEffectStatus = (typeof outboundEffectStatusEnum)[number];
+
+export const outboundEffectKindEnum = [
+  "webhook",
+  "slack_auto_post",
+  "no_show_recap",
+  "follow_up_email",
+  "meeting_reminder",
+] as const;
+export type OutboundEffectKind = (typeof outboundEffectKindEnum)[number];
+
+/**
+ * Delivery ledger for side effects outside the database (webhooks, Slack,
+ * emails). One row per logical effect, keyed by a stable effectKey, so a
+ * retried analysis or an overlapping cron run finds the existing row
+ * instead of repeating a completed delivery. Workers claim a row with a
+ * lease (claimId/claimedAt) before sending — see lib/processing/effects.ts.
+ * No relations are declared for it on purpose (see meetings above).
+ */
+export const outboundEffects = pgTable(
+  "outbound_effects",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    effectKey: text("effect_key").notNull().unique("outbound_effects_effect_key_unique"),
+    kind: text("kind").$type<OutboundEffectKind>().notNull(),
+    meetingId: uuid("meeting_id").references(() => meetings.id, { onDelete: "cascade" }),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    status: text("status").$type<OutboundEffectStatus>().notNull().default("pending"),
+    claimId: uuid("claim_id"),
+    claimedAt: timestamp("claimed_at"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    lastError: text("last_error"),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    meetingIdx: index("outbound_effects_meeting_idx").on(table.meetingId),
+    statusIdx: index("outbound_effects_status_idx").on(table.status, table.createdAt),
   })
 );
 

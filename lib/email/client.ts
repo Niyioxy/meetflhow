@@ -38,6 +38,8 @@ interface SendEmailParams {
   subject: string;
   html?: string;
   react?: ReactElement;
+  /** Stable RFC 5322 Message-ID, so a retried send can be recognised as a duplicate. */
+  messageId?: string;
 }
 
 export function getEmailClient() {
@@ -51,6 +53,7 @@ export function getEmailClient() {
           ...(params.replyTo ? { replyTo: params.replyTo } : {}),
           subject: params.subject,
           html,
+          ...(params.messageId ? { messageId: params.messageId } : {}),
         });
       },
     },

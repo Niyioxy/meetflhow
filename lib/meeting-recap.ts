@@ -13,7 +13,8 @@ export async function sendMeetingRecapEmail(
   meetingId: string,
   ownerUserId: string,
   recipientEmail: string,
-  isAutomaticNoShow = false
+  isAutomaticNoShow = false,
+  messageId?: string
 ): Promise<void> {
   const meeting = await db.query.meetings.findFirst({
     where: (m, { and, eq }) => and(eq(m.id, meetingId), eq(m.userId, ownerUserId)),
@@ -36,5 +37,6 @@ export async function sendMeetingRecapEmail(
       senderName: meeting.user.name,
       isAutomaticNoShow,
     }),
+    messageId,
   });
 }

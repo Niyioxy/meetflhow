@@ -7,12 +7,14 @@ export async function sendMeetingReminderEmail({
   scheduledAt,
   platform,
   meetLink,
+  messageId,
 }: {
   to: string;
   title: string;
   scheduledAt: Date;
   platform: string;
   meetLink: string | null;
+  messageId?: string;
 }) {
   const time = format(scheduledAt, "MMM d, yyyy 'at' h:mm a");
 
@@ -24,5 +26,6 @@ export async function sendMeetingReminderEmail({
       <p>Your meeting <strong>${title}</strong> starts at ${time} (${platform}).</p>
       ${meetLink ? `<p><a href="${meetLink}">Join meeting</a></p>` : ""}
     `,
+    messageId,
   });
 }

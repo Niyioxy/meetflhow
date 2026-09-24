@@ -42,12 +42,15 @@ export async function POST(
       meeting.actionItems.map((item) => ({
         userId: session.user.id,
         meetingId: meeting.id,
+        actionItemId: item.id,
         title: item.task,
         priority: item.priority,
         status: "backlog" as const,
         assignedTo: item.owner,
       }))
     )
+    // A concurrent request (double click) may have mirrored some already.
+    .onConflictDoNothing({ target: tasks.actionItemId })
     .returning();
 
   await Promise.all(

@@ -1,5 +1,7 @@
+import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { transcriptChunks } from "@/db/schema";
+import { atomic } from "@/lib/processing/atomic";
 import { embedChunks } from "@/lib/gemini/embed";
 
 const CHUNK_SIZE = 1000;
@@ -32,23 +34,46 @@ export function splitIntoChunks(text: string): string[] {
   return chunks;
 }
 
+/**
+ * (Re)indexes a transcript for search. Replace semantics, in one
+ * transaction: each chunk is upserted on (transcript_id, chunk_index), and
+ * any chunks past the new last index (from an earlier, longer text) are
+ * removed — so indexing the same transcript twice, or concurrently, never
+ * duplicates search results.
+ */
 export async function indexTranscript(
   transcriptId: string,
   meetingId: string,
   fullText: string
 ): Promise<void> {
   const chunks = splitIntoChunks(fullText);
-  if (chunks.length === 0) return;
+  const embeddings = chunks.length > 0 ? await embedChunks(chunks) : [];
 
-  const embeddings = await embedChunks(chunks);
-
-  await db.insert(transcriptChunks).values(
-    chunks.map((content, i) => ({
-      meetingId,
-      transcriptId,
-      chunkIndex: i,
-      content,
-      embedding: embeddings[i],
-    }))
-  );
+  await atomic([
+    chunks.length > 0 &&
+      db
+        .insert(transcriptChunks)
+        .values(
+          chunks.map((content, i) => ({
+            meetingId,
+            transcriptId,
+            chunkIndex: i,
+            content,
+            embedding: embeddings[i],
+          }))
+        )
+        .onConflictDoUpdate({
+          target: [transcriptChunks.transcriptId, transcriptChunks.chunkIndex],
+          set: {
+            content: sql`excluded.content`,
+            embedding: sql`excluded.embedding`,
+            meetingId: sql`excluded.meeting_id`,
+          },
+        }),
+    db
+      .delete(transcriptChunks)
+      .where(
+        and(eq(transcriptChunks.transcriptId, transcriptId), gte(transcriptChunks.chunkIndex, chunks.length))
+      ),
+  ]);
 }

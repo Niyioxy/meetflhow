@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { waitUntil } from "@vercel/functions";
 import { auth } from "@/auth";
-import { db } from "@/db";
-import { meetings } from "@/db/schema";
 import { getMeetingDetail, runAllMeetingAnalyses } from "@/lib/meetings";
 import { triggerInternalStep } from "@/lib/internal-auth";
 import { logMeetingEvent } from "@/lib/meeting-events";
+import { failQueuedStage, requeueMeeting } from "@/lib/processing/lease";
 
 export async function POST(
   _req: Request,
@@ -22,7 +20,17 @@ export async function POST(
     return NextResponse.json({ error: "Meeting not found" }, { status: 404 });
   }
 
-  if (meeting.status !== "failed") {
+  if (!meeting.transcript && !meeting.blobUrl) {
+    return NextResponse.json(
+      { error: "Nothing to retry — please re-record or re-upload." },
+      { status: 400 }
+    );
+  }
+
+  // Atomic: only a failed meeting (or one stuck because its worker died) is
+  // requeued, and only once — a double click's second request gets a 400.
+  const stage = meeting.transcript ? "analyzing" : "transcribing";
+  if (!(await requeueMeeting(meeting.id, stage))) {
     return NextResponse.json({ error: "This meeting isn't in a failed state" }, { status: 400 });
   }
 
@@ -36,26 +44,19 @@ export async function POST(
     return NextResponse.json({ accepted: true, retrying: "analysis" });
   }
 
-  if (meeting.blobUrl) {
-    await db.update(meetings).set({ status: "transcribing" }).where(eq(meetings.id, meeting.id));
-    await logMeetingEvent(meeting.id, "retried", "Retrying transcription");
-    try {
-      await triggerInternalStep(`/api/meetings/${meeting.id}/process-transcript`, {
-        blobUrl: meeting.blobUrl,
-        userId: meeting.userId,
-        workspaceId: meeting.workspaceId,
-      });
-    } catch (error) {
-      console.error("Retry transcription hand-off failed", error);
-      await db.update(meetings).set({ status: "failed" }).where(eq(meetings.id, meeting.id));
+  await logMeetingEvent(meeting.id, "retried", "Retrying transcription");
+  try {
+    await triggerInternalStep(`/api/meetings/${meeting.id}/process-transcript`, {
+      blobUrl: meeting.blobUrl,
+      userId: meeting.userId,
+      workspaceId: meeting.workspaceId,
+    });
+  } catch (error) {
+    console.error("Retry transcription hand-off failed", error);
+    if (await failQueuedStage(meeting.id, "transcribing")) {
       await logMeetingEvent(meeting.id, "failed", "Retry hand-off failed");
-      return NextResponse.json({ error: "Failed to retry" }, { status: 500 });
     }
-    return NextResponse.json({ accepted: true, retrying: "transcription" });
+    return NextResponse.json({ error: "Failed to retry" }, { status: 500 });
   }
-
-  return NextResponse.json(
-    { error: "Nothing to retry — please re-record or re-upload." },
-    { status: 400 }
-  );
+  return NextResponse.json({ accepted: true, retrying: "transcription" });
 }

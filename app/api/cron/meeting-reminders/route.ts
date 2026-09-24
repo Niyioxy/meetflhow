@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { checkCronSecret } from "@/lib/internal-auth";
-import { and, eq, gte, isNull, lte } from "drizzle-orm";
+import { and, gte, isNull, lte } from "drizzle-orm";
 import { db } from "@/db";
-import { scheduledMeetings, users } from "@/db/schema";
-import { sendMeetingReminderEmail } from "@/lib/email/reminder";
+import { scheduledMeetings } from "@/db/schema";
+import { enqueueEffects, type EffectSpec } from "@/lib/processing/effects";
+import { dispatchEffects } from "@/lib/processing/dispatch";
 
+/**
+ * Sends reminders for meetings starting in ~30 minutes, one ledger entry per
+ * meeting — claimed before sending, so overlapping cron runs can't both
+ * send the same reminder.
+ */
 export async function GET(req: Request) {
   const denied = checkCronSecret(req);
   if (denied) return denied;
@@ -14,12 +20,8 @@ export async function GET(req: Request) {
   const windowEnd = new Date(now + 35 * 60_000);
 
   const due = await db
-    .select({
-      meeting: scheduledMeetings,
-      userEmail: users.email,
-    })
+    .select({ id: scheduledMeetings.id })
     .from(scheduledMeetings)
-    .innerJoin(users, eq(scheduledMeetings.userId, users.id))
     .where(
       and(
         gte(scheduledMeetings.scheduledAt, windowStart),
@@ -28,25 +30,14 @@ export async function GET(req: Request) {
       )
     );
 
-  let sent = 0;
-  for (const { meeting, userEmail } of due) {
-    try {
-      await sendMeetingReminderEmail({
-        to: userEmail,
-        title: meeting.title,
-        scheduledAt: meeting.scheduledAt,
-        platform: meeting.platform,
-        meetLink: meeting.meetLink,
-      });
-      await db
-        .update(scheduledMeetings)
-        .set({ reminderSentAt: new Date() })
-        .where(eq(scheduledMeetings.id, meeting.id));
-      sent += 1;
-    } catch (error) {
-      console.error(`Failed to send reminder for meeting ${meeting.id}`, error);
-    }
-  }
+  const specs: EffectSpec[] = due.map((meeting) => ({
+    key: `meeting-reminder:${meeting.id}`,
+    kind: "meeting_reminder",
+    meetingId: null,
+    payload: { scheduledMeetingId: meeting.id },
+  }));
+  await enqueueEffects(specs);
+  const result = await dispatchEffects({ keys: specs.map((s) => s.key) });
 
-  return NextResponse.json({ checked: due.length, sent });
+  return NextResponse.json({ checked: due.length, sent: result.succeeded, ...result });
 }

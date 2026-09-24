@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { sendMeetingRecapEmail } from "@/lib/meeting-recap";
+import { stableMessageId, type EffectResult, type EffectSpec } from "@/lib/processing/effects";
 
 /**
  * How close a scheduled meeting's start time and a recording's createdAt
@@ -11,7 +12,7 @@ import { sendMeetingRecapEmail } from "@/lib/meeting-recap";
 const MATCH_WINDOW_MS = 3 * 60 * 60 * 1000;
 
 /**
- * Auto-emails a recap to anyone who was invited (per a heuristically
+ * Finds who should be auto-emailed a recap: anyone who was invited (per a heuristically
  * matched scheduled meeting's attendee list) but never actually spoke in
  * the recording, per voice ID. There's no explicit FK tying a recording
  * back to its calendar invite — adding one to the meetings table pushed
@@ -26,15 +27,15 @@ const MATCH_WINDOW_MS = 3 * 60 * 60 * 1000;
  * "ai_inference" — an AI-guessed speaker label isn't reliable enough to
  * clear someone as "attended" and skip their recap.
  */
-export async function sendNoShowRecaps(meetingId: string): Promise<void> {
+export async function noShowRecapEffects(meetingId: string): Promise<EffectSpec[]> {
   const meeting = await db.query.meetings.findFirst({
     where: (m, { eq }) => eq(m.id, meetingId),
     with: { transcript: true, user: true },
   });
-  if (!meeting?.transcript?.speakerSegments) return;
+  if (!meeting?.transcript?.speakerSegments) return [];
 
   const normalizedTitle = meeting.title.trim().toLowerCase();
-  if (!normalizedTitle) return;
+  if (!normalizedTitle) return [];
 
   const candidates = await db.query.scheduledMeetings.findMany({
     where: (sm, { eq }) => eq(sm.userId, meeting.userId),
@@ -46,7 +47,7 @@ export async function sendNoShowRecaps(meetingId: string): Promise<void> {
       sm.attendees.length > 0 &&
       Math.abs(sm.scheduledAt.getTime() - meeting.createdAt.getTime()) <= MATCH_WINDOW_MS
   );
-  if (!scheduledMeeting) return;
+  if (!scheduledMeeting) return [];
 
   const presentUserIds = Array.from(
     new Set(
@@ -70,11 +71,26 @@ export async function sendNoShowRecaps(meetingId: string): Promise<void> {
     (email) => !presentEmails.has(email.toLowerCase())
   );
 
-  for (const email of noShowEmails) {
-    try {
-      await sendMeetingRecapEmail(meeting.id, meeting.userId, email, true);
-    } catch (error) {
-      console.error(`Failed to send no-show recap to ${email}`, error);
-    }
-  }
+  // One ledger entry per recipient, so a retried analysis never re-emails
+  // someone whose recap already went out.
+  return Array.from(new Set(noShowEmails.map((e) => e.toLowerCase()))).map((email) => ({
+    key: `no-show-recap:${meeting.id}:${email}`,
+    kind: "no_show_recap" as const,
+    meetingId: meeting.id,
+    payload: { meetingId: meeting.id, ownerUserId: meeting.userId, email },
+  }));
+}
+
+/** Effect handler for a ledger "no_show_recap" entry. */
+export async function sendNoShowRecapEffect(effect: {
+  effectKey: string;
+  payload: Record<string, unknown>;
+}): Promise<EffectResult> {
+  const { meetingId, ownerUserId, email } = effect.payload as {
+    meetingId: string;
+    ownerUserId: string;
+    email: string;
+  };
+  await sendMeetingRecapEmail(meetingId, ownerUserId, email, true, stableMessageId(effect.effectKey));
+  return { status: "succeeded" };
 }

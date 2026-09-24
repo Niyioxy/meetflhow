@@ -1,9 +1,10 @@
-import crypto from "crypto";
+import crypto, { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { callRooms, meetings } from "@/db/schema";
 import { triggerInternalStep } from "@/lib/internal-auth";
+import { atomic } from "@/lib/processing/atomic";
 
 export const runtime = "nodejs";
 
@@ -51,31 +52,61 @@ export async function POST(req: Request) {
           where: (c, { eq }) => eq(c.dailyRoomName, roomName),
         });
 
-        if (callRoom && !callRoom.meetingId) {
-          const [meeting] = await db
-            .insert(meetings)
-            .values({
-              userId: callRoom.createdBy,
-              workspaceId: callRoom.workspaceId,
-              sharedWithWorkspace: true,
-              title: "Call recording",
-              platform: "meetflhow-call",
-              contentType: "meeting",
-              status: "transcribing",
-              blobUrl: downloadLink,
-            })
-            .returning();
+        if (callRoom) {
+          let meetingId = callRoom.meetingId;
 
-          await db
-            .update(callRooms)
-            .set({ meetingId: meeting.id })
-            .where(eq(callRooms.id, callRoom.id));
+          if (!meetingId) {
+            // Daily redelivers webhooks, possibly concurrently. Create the
+            // meeting and link it to the room in one transaction, undoing the
+            // insert in that same transaction if another delivery linked the
+            // room first — so exactly one meeting is ever created per room.
+            const candidateId = randomUUID();
+            await atomic([
+              db.insert(meetings).values({
+                id: candidateId,
+                userId: callRoom.createdBy,
+                workspaceId: callRoom.workspaceId,
+                sharedWithWorkspace: true,
+                title: "Call recording",
+                platform: "meetflhow-call",
+                contentType: "meeting",
+                status: "transcribing",
+                blobUrl: downloadLink,
+              }),
+              db
+                .update(callRooms)
+                .set({ meetingId: candidateId })
+                .where(and(eq(callRooms.id, callRoom.id), isNull(callRooms.meetingId))),
+              db
+                .delete(meetings)
+                .where(
+                  and(
+                    eq(meetings.id, candidateId),
+                    sql`not exists (select 1 from ${callRooms} where ${callRooms.meetingId} = ${candidateId})`
+                  )
+                ),
+            ]);
 
-          await triggerInternalStep(`/api/meetings/${meeting.id}/process-transcript`, {
-            blobUrl: downloadLink,
-            userId: callRoom.createdBy,
-            workspaceId: callRoom.workspaceId,
-          });
+            const linked = await db.query.callRooms.findFirst({
+              where: (c, { eq }) => eq(c.id, callRoom.id),
+            });
+            meetingId = linked?.meetingId ?? null;
+          }
+
+          // (Re)hand off while the meeting still awaits transcription, so a
+          // redelivery also recovers a hand-off that failed last time.
+          // Harmless if transcription is already running or finished:
+          // process-transcript only acts if it can claim the meeting.
+          const meeting = meetingId
+            ? await db.query.meetings.findFirst({ where: (m, { eq }) => eq(m.id, meetingId!) })
+            : null;
+          if (meeting?.status === "transcribing" && meeting.blobUrl) {
+            await triggerInternalStep(`/api/meetings/${meeting.id}/process-transcript`, {
+              blobUrl: meeting.blobUrl,
+              userId: meeting.userId,
+              workspaceId: meeting.workspaceId,
+            });
+          }
         }
       }
     }
