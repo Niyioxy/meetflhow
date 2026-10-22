@@ -31,6 +31,11 @@ vi.mock("@/lib/gemini/embed", () => ({ embedChunks: vi.fn() }));
 vi.mock("@/lib/deepgram/transcribe", () => ({ transcribeAudio: vi.fn() }));
 vi.mock("@/lib/voice-identification", () => ({ matchSpeakersByVoice: vi.fn() }));
 vi.mock("@vercel/blob", () => ({ del: vi.fn(), put: vi.fn() }));
+vi.mock("@/lib/daily/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/daily/client")>()),
+  getRecordingDownloadLink: vi.fn(),
+  deleteRecording: vi.fn(),
+}));
 vi.mock("@vercel/functions", () => ({ waitUntil: vi.fn() }));
 vi.mock("@/lib/integrations/slack", () => ({ postMeetingToSlack: vi.fn() }));
 vi.mock("@/lib/meeting-recap", () => ({ sendMeetingRecapEmail: vi.fn() }));

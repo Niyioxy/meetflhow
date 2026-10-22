@@ -93,3 +93,30 @@ export async function createMeetingToken(params: {
   });
   return data.token;
 }
+
+/**
+ * Daily's `recording.ready-to-download` webhook carries a `recording_id` (and
+ * an `s3_key`), not a download URL — a short-lived signed link has to be
+ * requested separately. 12h is the longest Daily allows for its own storage,
+ * long enough that a delayed retry of a failed transcription still works.
+ */
+export async function getRecordingDownloadLink(recordingId: string): Promise<string> {
+  const data = await dailyFetch(
+    `/recordings/${encodeURIComponent(recordingId)}/access-link?valid_for_secs=43200`,
+    { method: "GET" }
+  );
+  if (typeof data?.download_link !== "string" || !data.download_link) {
+    throw new Error("Daily returned no download link for the recording");
+  }
+  return data.download_link;
+}
+
+/** Deletes a recording from Daily's storage. Already gone counts as deleted. */
+export async function deleteRecording(recordingId: string): Promise<void> {
+  try {
+    await dailyFetch(`/recordings/${encodeURIComponent(recordingId)}`, { method: "DELETE" });
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Daily API error (404)")) return;
+    throw error;
+  }
+}

@@ -7,6 +7,7 @@ import { embedChunks } from "@/lib/gemini/embed";
 import { transcribeAudio } from "@/lib/deepgram/transcribe";
 import { matchSpeakersByVoice } from "@/lib/voice-identification";
 import { del, put } from "@vercel/blob";
+import { deleteRecording, getRecordingDownloadLink } from "@/lib/daily/client";
 import { postMeetingToSlack } from "@/lib/integrations/slack";
 import { sendMeetingRecapEmail } from "@/lib/meeting-recap";
 import { getEmailClient } from "@/lib/email/client";
@@ -25,6 +26,8 @@ export const mocks = {
   matchSpeakersByVoice: asMock(matchSpeakersByVoice),
   blobDel: asMock(del),
   blobPut: asMock(put),
+  dailyDeleteRecording: asMock(deleteRecording),
+  dailyDownloadLink: asMock(getRecordingDownloadLink),
   postMeetingToSlack: asMock(postMeetingToSlack),
   sendMeetingRecapEmail: asMock(sendMeetingRecapEmail),
   emailSend: asMock(getEmailClient().emails.send),
@@ -74,6 +77,8 @@ export function resetMocks() {
   mocks.blobPut.mockImplementation(async (pathname: string) => ({
     url: `https://blob.test/${pathname}`,
   }));
+  mocks.dailyDeleteRecording.mockResolvedValue(undefined);
+  mocks.dailyDownloadLink.mockImplementation(async (recordingId: string) => `https://daily.test/signed/${recordingId}`);
   mocks.postMeetingToSlack.mockResolvedValue({ ok: true });
   mocks.sendMeetingRecapEmail.mockResolvedValue(undefined);
   mocks.emailSend.mockResolvedValue({});

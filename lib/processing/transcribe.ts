@@ -1,5 +1,4 @@
 import { randomUUID } from "crypto";
-import { del } from "@vercel/blob";
 import { db } from "@/db";
 import { meetingEvents, transcripts } from "@/db/schema";
 import { transcribeAudio, type TranscriptUtterance } from "@/lib/deepgram/transcribe";
@@ -9,6 +8,7 @@ import type { VoiceMatch } from "@/lib/voice-identification";
 import { triggerInternalStep } from "@/lib/internal-auth";
 import { logMeetingEvent } from "@/lib/meeting-events";
 import { atomic } from "@/lib/processing/atomic";
+import { deleteTransientAudio } from "@/lib/processing/audio-cleanup";
 import {
   claimStage,
   failQueuedStage,
@@ -126,7 +126,7 @@ export async function processTranscript(
 
   // Committed — everything below is after the fact. Transient hand-off only:
   // the audio isn't needed now that its transcript is stored.
-  await del(blobUrl).catch((error) => console.error("Failed to delete transient audio blob", error));
+  await deleteTransientAudio(meetingId, blobUrl);
 
   const transcript = await db.query.transcripts.findFirst({
     where: (t, { eq }) => eq(t.meetingId, meetingId),

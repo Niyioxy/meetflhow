@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { del } from "@vercel/blob";
 import { auth } from "@/auth";
+import { deleteTransientAudio } from "@/lib/processing/audio-cleanup";
 import { db } from "@/db";
 import { meetings, callRooms, contentTypeEnum } from "@/db/schema";
 import { getMeetingDetail } from "@/lib/meetings";
@@ -93,9 +93,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   await db.update(callRooms).set({ meetingId: null }).where(eq(callRooms.meetingId, params.id));
 
-  if (existing.blobUrl) {
-    await del(existing.blobUrl).catch((error) => console.error("Failed to delete transient audio blob", error));
-  }
+  // Also retries a Daily recording whose post-transcription delete failed.
+  await deleteTransientAudio(params.id, existing.blobUrl);
 
   await db.delete(meetings).where(eq(meetings.id, params.id));
 

@@ -5,6 +5,9 @@ import { db } from "@/db";
 import { callRooms, meetings } from "@/db/schema";
 import { triggerInternalStep } from "@/lib/internal-auth";
 import { atomic } from "@/lib/processing/atomic";
+import { getRecordingDownloadLink } from "@/lib/daily/client";
+import { logMeetingEvent } from "@/lib/meeting-events";
+import { dailyRecordingEventDetail } from "@/lib/processing/audio-cleanup";
 
 export const runtime = "nodejs";
 
@@ -45,9 +48,12 @@ export async function POST(req: Request) {
   try {
     if (event.type === "recording.ready-to-download") {
       const roomName: string | undefined = event.payload?.room_name;
-      const downloadLink: string | undefined = event.payload?.download_link;
+      const recordingId: string | undefined = event.payload?.recording_id;
+      // Daily's documented payload carries a recording_id, not a download
+      // URL; accept a link if one is ever included, otherwise ask for one.
+      const payloadLink: string | undefined = event.payload?.download_link;
 
-      if (roomName && downloadLink) {
+      if (roomName && (payloadLink || recordingId)) {
         const callRoom = await db.query.callRooms.findFirst({
           where: (c, { eq }) => eq(c.dailyRoomName, roomName),
         });
@@ -61,6 +67,9 @@ export async function POST(req: Request) {
             // insert in that same transaction if another delivery linked the
             // room first — so exactly one meeting is ever created per room.
             const candidateId = randomUUID();
+            // Only needed (and only requested) when this delivery has to
+            // create the meeting; a throw here becomes a 500 so Daily retries.
+            const downloadLink = payloadLink ?? (await getRecordingDownloadLink(recordingId!));
             await atomic([
               db.insert(meetings).values({
                 id: candidateId,
@@ -91,6 +100,13 @@ export async function POST(req: Request) {
               where: (c, { eq }) => eq(c.id, callRoom.id),
             });
             meetingId = linked?.meetingId ?? null;
+
+            // Remember which Daily recording this meeting came from so its
+            // audio can be deleted from Daily once it has been transcribed.
+            // Only the delivery whose meeting won the race records it.
+            if (recordingId && meetingId === candidateId) {
+              await logMeetingEvent(candidateId, "uploaded", dailyRecordingEventDetail(recordingId));
+            }
           }
 
           // (Re)hand off while the meeting still awaits transcription, so a
