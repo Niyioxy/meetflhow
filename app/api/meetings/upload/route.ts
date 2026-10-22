@@ -7,6 +7,7 @@ import { getWorkspaceMember, getWorkspaceOrThrow } from "@/lib/workspace-auth";
 import { isContentTypeAllowed } from "@/lib/organization-types";
 import { canRecordMeeting, FREE_TIER_MONTHLY_RECORDINGS } from "@/lib/billing";
 import { logMeetingEvent } from "@/lib/meeting-events";
+import { isOwnWebBlobUrl } from "@/lib/blob-urls";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -35,6 +36,13 @@ export async function POST(req: Request) {
   }
 
   const { blobUrl, title, platform, workspaceId, sharedWithWorkspace } = parsed.data;
+
+  // The pipeline fetches and then deletes this URL, so it must be a blob this
+  // user uploaded via /api/meetings/upload-token — not another user's, and
+  // not an arbitrary host.
+  if (!isOwnWebBlobUrl(session.user.id, blobUrl)) {
+    return NextResponse.json({ error: "Invalid upload" }, { status: 400 });
+  }
   const contentTypeInput = parsed.data.contentType;
   const contentType: ContentType = contentTypeEnum.includes(contentTypeInput as ContentType)
     ? (contentTypeInput as ContentType)

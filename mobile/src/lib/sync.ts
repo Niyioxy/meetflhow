@@ -2,6 +2,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Notifications from "expo-notifications";
 import { getPendingRecordings, markAsSynced, clearSyncedRecordings } from "./offline";
 import { api } from "./api";
+import { uploadRecordingFile } from "./upload";
 import { isOnline } from "./offline";
 
 export async function syncOfflineRecordings(): Promise<{ synced: number; failed: number }> {
@@ -21,9 +22,7 @@ export async function syncOfflineRecordings(): Promise<{ synced: number; failed:
         continue;
       }
 
-      const audio_base64 = await FileSystem.readAsStringAsync(recording.file_path, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      const blob_url = await uploadRecordingFile(recording.file_path, recording.id);
 
       const result = await api.sync([
         {
@@ -32,7 +31,7 @@ export async function syncOfflineRecordings(): Promise<{ synced: number; failed:
           platform: recording.platform,
           recorded_at: recording.recorded_at,
           duration: recording.duration,
-          audio_base64,
+          blob_url,
         },
       ]);
 

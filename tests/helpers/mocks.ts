@@ -6,7 +6,7 @@ import { identifySpeakers, nameSpeakerLabels } from "@/lib/gemini/speakers";
 import { embedChunks } from "@/lib/gemini/embed";
 import { transcribeAudio } from "@/lib/deepgram/transcribe";
 import { matchSpeakersByVoice } from "@/lib/voice-identification";
-import { del } from "@vercel/blob";
+import { del, put } from "@vercel/blob";
 import { postMeetingToSlack } from "@/lib/integrations/slack";
 import { sendMeetingRecapEmail } from "@/lib/meeting-recap";
 import { getEmailClient } from "@/lib/email/client";
@@ -24,6 +24,7 @@ export const mocks = {
   transcribeAudio: asMock(transcribeAudio),
   matchSpeakersByVoice: asMock(matchSpeakersByVoice),
   blobDel: asMock(del),
+  blobPut: asMock(put),
   postMeetingToSlack: asMock(postMeetingToSlack),
   sendMeetingRecapEmail: asMock(sendMeetingRecapEmail),
   emailSend: asMock(getEmailClient().emails.send),
@@ -70,6 +71,9 @@ export function resetMocks() {
   });
   mocks.matchSpeakersByVoice.mockResolvedValue({});
   mocks.blobDel.mockResolvedValue(undefined);
+  mocks.blobPut.mockImplementation(async (pathname: string) => ({
+    url: `https://blob.test/${pathname}`,
+  }));
   mocks.postMeetingToSlack.mockResolvedValue({ ok: true });
   mocks.sendMeetingRecapEmail.mockResolvedValue(undefined);
   mocks.emailSend.mockResolvedValue({});

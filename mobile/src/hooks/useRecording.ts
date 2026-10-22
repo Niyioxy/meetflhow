@@ -5,6 +5,7 @@ import { Alert } from "react-native";
 import { useRecordingStore } from "@/store/recordingStore";
 import { isOnline, saveOfflineRecording } from "@/lib/offline";
 import { api } from "@/lib/api";
+import { uploadRecordingFile } from "@/lib/upload";
 
 const OFFLINE_DIR = `${FileSystem.documentDirectory}offline-recordings/`;
 
@@ -89,35 +90,51 @@ export function useRecording() {
 
     const title = store.title || `Meeting ${new Date().toLocaleDateString()}`;
     const durationSec = Math.round(store.elapsedMs / 1000);
+    // One id for this recording across the immediate attempt and any offline
+    // retry, so the server can recognise a recording it already received.
+    const localId = Date.now().toString();
+    const recordedAt = new Date().toISOString();
     const online = await isOnline();
 
+    let uploaded = false;
     if (online) {
       try {
-        const audioData = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        await api.sync([{ id: Date.now().toString(), title, platform: store.platform, recorded_at: new Date().toISOString(), duration: durationSec, audio_base64: audioData }]);
-        await FileSystem.deleteAsync(uri, { idempotent: true });
+        const blobUrl = await uploadRecordingFile(uri, localId);
+        const result = await api.sync([{ id: localId, title, platform: store.platform, recorded_at: recordedAt, duration: durationSec, blob_url: blobUrl }]);
+        uploaded = (result as { results?: Array<{ status: string }> }).results?.[0]?.status === "queued";
       } catch {
-        await saveToOffline(uri, title, durationSec, store.platform);
+        uploaded = false;
       }
+    }
+
+    // Only discard the audio once the server confirms it's queued; anything
+    // else keeps it in the offline queue for the next sync.
+    if (uploaded) {
+      await FileSystem.deleteAsync(uri, { idempotent: true });
     } else {
-      await saveToOffline(uri, title, durationSec, store.platform);
+      await saveToOffline(uri, localId, recordedAt, title, durationSec, store.platform);
     }
 
     store.setStatus("done");
     setTimeout(() => store.reset(), 3000);
   }, [store]);
 
-  async function saveToOffline(uri: string, title: string, duration: number, platform: string) {
+  async function saveToOffline(
+    uri: string,
+    id: string,
+    recordedAt: string,
+    title: string,
+    duration: number,
+    platform: string
+  ) {
     await ensureDir();
-    const dest = `${OFFLINE_DIR}${Date.now()}.m4a`;
+    const dest = `${OFFLINE_DIR}${id}.m4a`;
     await FileSystem.moveAsync({ from: uri, to: dest });
     await saveOfflineRecording({
-      id: Date.now().toString(),
+      id,
       title,
       platform,
-      recorded_at: new Date().toISOString(),
+      recorded_at: recordedAt,
       duration,
       file_path: dest,
     });

@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import { upload } from "@vercel/blob/client";
+import { webUploadPath } from "@/lib/blob-urls";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +24,7 @@ import type { OrganizationType } from "@/db/schema";
 export function UploadForm() {
   const router = useRouter();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const userId = useSession().data?.user?.id;
   const allowedContentTypes =
     ALLOWED_CONTENT_TYPES[(activeWorkspace?.organization_type as OrganizationType) ?? "general"];
 
@@ -59,7 +62,8 @@ export function UploadForm() {
     }
     setFileSubmitting(true);
     try {
-      const blob = await upload(`meeting-uploads/${Date.now()}-${file.name}`, file, {
+      if (!userId) throw new Error("Still signing you in — try again in a moment");
+      const blob = await upload(webUploadPath(userId, file.name), file, {
         access: "public",
         handleUploadUrl: "/api/meetings/upload-token",
         multipart: true,
@@ -142,7 +146,7 @@ export function UploadForm() {
           <CardHeader>
             <CardTitle>Upload a recording</CardTitle>
             <CardDescription>
-              We&apos;ll transcribe it with Deepgram and analyze it with Gemini automatically.
+              We&apos;ll transcribe and analyze it automatically.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">

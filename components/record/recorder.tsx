@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { useSession } from "next-auth/react";
 import { upload } from "@vercel/blob/client";
+import { webUploadPath } from "@/lib/blob-urls";
 import { useRecording } from "@/components/providers/recording-provider";
 import { useAudioLevel } from "@/hooks/use-audio-level";
 import { useWorkspace } from "@/components/providers/workspace-provider";
@@ -66,6 +68,7 @@ export function Recorder({
     discardDraft,
   } = useRecording();
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const userId = useSession().data?.user?.id;
   const allowedContentTypes =
     ALLOWED_CONTENT_TYPES[(activeWorkspace?.organization_type as OrganizationType) ?? "general"];
 
@@ -108,7 +111,8 @@ export function Recorder({
     setAutoSaveStatus("saving");
     try {
       const filename = `${title || "recording"}.webm`;
-      const blob = await upload(`meeting-uploads/${Date.now()}-${filename}`, audioBlob, {
+      if (!userId) throw new Error("Still signing you in — try again in a moment");
+      const blob = await upload(webUploadPath(userId, filename), audioBlob, {
         access: "public",
         handleUploadUrl: "/api/meetings/upload-token",
         multipart: true,
@@ -148,10 +152,11 @@ export function Recorder({
   // Fires once per stopped recording (fresh or restored from a draft) —
   // this is what makes the recording durable, with no click required.
   useEffect(() => {
-    if (status !== "stopped" || !audioBlob || savedMeetingId || autoSaveStatus !== "idle") return;
+    // Waits for the session too: the upload path is scoped to the user id.
+    if (status !== "stopped" || !audioBlob || !userId || savedMeetingId || autoSaveStatus !== "idle") return;
     autoSaveRecording();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, audioBlob]);
+  }, [status, audioBlob, userId]);
 
   async function handleFinish() {
     if (!audioBlob) return;

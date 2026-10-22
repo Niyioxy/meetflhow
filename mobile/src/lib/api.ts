@@ -68,6 +68,15 @@ export const api = {
     return res.json();
   },
 
+  uploadRequest: async (id: string): Promise<{
+    upload: { method: "PUT"; url: string; headers: Record<string, string> };
+  }> => {
+    return authFetch("/api/mobile/upload-token", {
+      method: "POST",
+      body: JSON.stringify({ id }),
+    });
+  },
+
   sync: async (recordings: object[]) => {
     return authFetch("/api/mobile/sync", {
       method: "POST",
