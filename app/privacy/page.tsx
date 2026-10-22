@@ -5,7 +5,7 @@ import { SITE_NAME } from "@/lib/site";
 
 const TITLE = `Privacy Policy — ${SITE_NAME}`;
 const DESCRIPTION = `How ${SITE_NAME} collects, uses, and protects your data.`;
-const LAST_UPDATED = "September 9, 2026";
+const LAST_UPDATED = "October 22, 2026";
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -55,8 +55,16 @@ export default function PrivacyPolicyPage() {
           <p>
             <strong className="text-foreground">Recordings and transcripts.</strong> When you
             record or upload a meeting, we process the audio to produce a transcript, speaker
-            labels, summary, action items, and related analysis. Audio and transcripts are
+            labels, summary, action items, and related analysis. Transcripts and analysis are
             stored on your account until you delete them.
+          </p>
+          <p>
+            <strong className="text-foreground">Audio files.</strong> We do not keep your audio
+            as part of your account. Uploaded or recorded audio is held only so it can be
+            transcribed, and is deleted once transcription succeeds. If transcription fails, we
+            keep the audio only until a retry succeeds or you delete the meeting. Recordings of
+            calls made inside {SITE_NAME} are captured by our call provider, Daily, and are
+            deleted from Daily&apos;s storage after transcription in the same way.
           </p>
           <p>
             <strong className="text-foreground">Voice profile.</strong> If you enrol a voice
@@ -97,7 +105,8 @@ export default function PrivacyPolicyPage() {
             <li><strong className="text-foreground">Google / Microsoft</strong> — authentication and calendar access</li>
             <li><strong className="text-foreground">Deepgram</strong> — speech-to-text transcription and speaker diarization</li>
             <li><strong className="text-foreground">Google Gemini</strong> — meeting analysis (summaries, decisions, action items, sentiment)</li>
-            <li><strong className="text-foreground">Vercel</strong> — application hosting and audio file storage</li>
+            <li><strong className="text-foreground">Vercel</strong> — application hosting and temporary audio file storage until transcription completes</li>
+            <li><strong className="text-foreground">Daily</strong> — audio calling and call recording inside {SITE_NAME}; recordings are deleted after transcription</li>
             <li><strong className="text-foreground">Neon</strong> — database hosting</li>
             <li><strong className="text-foreground">Brevo</strong> — transactional email delivery (recaps, notifications)</li>
             <li><strong className="text-foreground">Google Analytics</strong> — product usage analytics</li>
@@ -118,7 +127,8 @@ export default function PrivacyPolicyPage() {
           <p>
             We retain your account data and meeting content for as long as your account is
             active. You can delete individual meetings at any time from within the app, which
-            permanently removes the recording, transcript, and analysis. You can request deletion
+            permanently removes the transcript and analysis, along with any source audio we still
+            hold for that meeting. You can request deletion
             of your entire account and all associated data by contacting us at the email below.
           </p>
         </Section>
