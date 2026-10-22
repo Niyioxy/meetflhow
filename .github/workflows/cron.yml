@@ -1,0 +1,55 @@
+name: Scheduled jobs
+
+# Vercel's free (Hobby) plan only allows daily crons, but meeting reminders
+# need a check every few minutes (they look 25-35 minutes ahead) and the
+# delivery sweeper retries failed webhooks/Slack posts. So GitHub Actions
+# calls the same routes Vercel Cron would, with the same bearer secret.
+#
+# Setup (once):
+#   1. Add the repository secret CRON_SECRET - the same value as the
+#      CRON_SECRET environment variable in Vercel (Production).
+#   2. Optional: set the repository variable APP_URL if the app is not at
+#      https://meetflhow.com.
+# GitHub only runs scheduled workflows from the default branch, and may delay
+# a run by several minutes under load. If the repository is public and sees no
+# activity for 60 days, GitHub pauses the schedule - re-enable it in the
+# Actions tab. Moving to Vercel Pro and a vercel.json "crons" block would make
+# this file unnecessary.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: scheduled-jobs
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call cron routes
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL || 'https://meetflhow.com' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repository secret is not set"
+            exit 1
+          fi
+          failed=0
+          for job in outbound-effects meeting-reminders follow-up-emails; do
+            echo "== $job"
+            if ! curl --silent --show-error --fail-with-body --max-time 60 \
+              --header "Authorization: Bearer $CRON_SECRET" \
+              "$APP_URL/api/cron/$job"; then
+              echo "::error::$job failed"
+              failed=1
+            fi
+            echo
+          done
+          exit $failed
