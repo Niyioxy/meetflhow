@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getPublicShare, unlockCookieName, unlockCookieValue } from "@/lib/shares";
+import { getPublicShare, unlockCookieName } from "@/lib/shares";
 
 export async function GET(_req: Request, { params }: { params: { token: string } }) {
   const cookieStore = cookies();
-  const unlocked =
-    cookieStore.get(unlockCookieName(params.token))?.value === unlockCookieValue(params.token);
+  const unlockCookie = cookieStore.get(unlockCookieName(params.token))?.value;
 
-  const result = await getPublicShare(params.token, unlocked);
+  const result = await getPublicShare(params.token, unlockCookie);
   if (!result) {
     return NextResponse.json({ error: "Share link not found" }, { status: 404 });
   }

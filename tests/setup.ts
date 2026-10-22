@@ -3,6 +3,8 @@ import { vi } from "vitest";
 process.env.NEXTAUTH_URL = "https://app.test";
 process.env.INTERNAL_API_SECRET = "internal-test-secret";
 process.env.CRON_SECRET = "cron-test-secret";
+process.env.NEXTAUTH_SECRET = "nextauth-test-secret";
+process.env.MOBILE_JWT_SECRET = "mobile-jwt-test-secret";
 process.env.DAILY_WEBHOOK_SECRET = Buffer.from("daily-test-secret").toString("base64");
 
 // The app's database client, swapped for a real in-process Postgres.
@@ -28,7 +30,7 @@ vi.mock("@/lib/gemini/cost-benchmark", () => ({ generateCostVerdict: vi.fn() }))
 vi.mock("@/lib/gemini/embed", () => ({ embedChunks: vi.fn() }));
 vi.mock("@/lib/deepgram/transcribe", () => ({ transcribeAudio: vi.fn() }));
 vi.mock("@/lib/voice-identification", () => ({ matchSpeakersByVoice: vi.fn() }));
-vi.mock("@vercel/blob", () => ({ del: vi.fn() }));
+vi.mock("@vercel/blob", () => ({ del: vi.fn(), put: vi.fn() }));
 vi.mock("@vercel/functions", () => ({ waitUntil: vi.fn() }));
 vi.mock("@/lib/integrations/slack", () => ({ postMeetingToSlack: vi.fn() }));
 vi.mock("@/lib/meeting-recap", () => ({ sendMeetingRecapEmail: vi.fn() }));

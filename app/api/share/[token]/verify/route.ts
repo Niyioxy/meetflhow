@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { verifySharePassword, unlockCookieName, unlockCookieValue } from "@/lib/shares";
+import { verifySharePassword, unlockCookieName } from "@/lib/shares";
 
 const bodySchema = z.object({ password: z.string().min(1) });
 
@@ -11,13 +11,13 @@ export async function POST(req: Request, { params }: { params: { token: string }
     return NextResponse.json({ error: "Password is required" }, { status: 400 });
   }
 
-  const valid = await verifySharePassword(params.token, parsed.data.password);
-  if (!valid) {
+  const cookieValue = await verifySharePassword(params.token, parsed.data.password);
+  if (!cookieValue) {
     return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
   }
 
   const res = NextResponse.json({ success: true });
-  res.cookies.set(unlockCookieName(params.token), unlockCookieValue(params.token), {
+  res.cookies.set(unlockCookieName(params.token), cookieValue, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

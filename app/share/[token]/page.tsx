@@ -6,14 +6,13 @@ import { Logo } from "@/components/ui/logo";
 import { PasswordGate } from "@/components/share/password-gate";
 import { TranscriptSearch } from "@/components/share/transcript-search";
 import { initialsFromName, colorFromName } from "@/lib/avatar";
-import { getPublicShare, unlockCookieName, unlockCookieValue } from "@/lib/shares";
+import { getPublicShare, unlockCookieName } from "@/lib/shares";
 
 export default async function PublicSharePage({ params }: { params: { token: string } }) {
   const cookieStore = cookies();
-  const unlocked =
-    cookieStore.get(unlockCookieName(params.token))?.value === unlockCookieValue(params.token);
+  const unlockCookie = cookieStore.get(unlockCookieName(params.token))?.value;
 
-  const result = await getPublicShare(params.token, unlocked);
+  const result = await getPublicShare(params.token, unlockCookie);
   if (!result) {
     notFound();
   }

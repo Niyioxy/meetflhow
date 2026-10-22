@@ -7,7 +7,11 @@ export default async function LoginPage({
 }: {
   searchParams: { callbackUrl?: string };
 }) {
-  const callbackUrl = searchParams.callbackUrl || "/dashboard";
+  // Only same-origin paths — "//evil.com" or "/\evil.com" would otherwise
+  // turn the server-side redirect below into an open redirect.
+  const requested = searchParams.callbackUrl;
+  const callbackUrl =
+    requested && /^\/(?![/\\])/.test(requested) ? requested : "/dashboard";
 
   const session = await auth();
   if (session) {

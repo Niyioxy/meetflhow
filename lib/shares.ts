@@ -22,11 +22,21 @@ export function unlockCookieName(token: string): string {
   return `su_${token.slice(0, 12)}`;
 }
 
-export function unlockCookieValue(token: string): string {
+// Bound to the current password hash (which carries a fresh salt every time
+// it's set), so changing or removing the password invalidates every
+// previously issued unlock cookie instead of letting it ride out its maxAge.
+export function unlockCookieValue(token: string, passwordHash: string): string {
   const secret = process.env.NEXTAUTH_SECRET;
   // An empty HMAC key would make unlock cookies forgeable by anyone.
   if (!secret) throw new Error("NEXTAUTH_SECRET is not set");
-  return createHmac("sha256", secret).update(token).digest("hex");
+  return createHmac("sha256", secret).update(`${token}:${passwordHash}`).digest("hex");
+}
+
+function isUnlocked(token: string, passwordHash: string, cookie: string | undefined): boolean {
+  if (!cookie) return false;
+  const expected = Buffer.from(unlockCookieValue(token, passwordHash));
+  const actual = Buffer.from(cookie);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
 function toShareLinkView(row: typeof meetingShares.$inferSelect): ShareLinkView {
@@ -129,17 +139,19 @@ export async function revokeShare(meetingId: string, userId: string): Promise<vo
   await db.delete(meetingShares).where(eq(meetingShares.meetingId, meetingId));
 }
 
-export async function verifySharePassword(token: string, password: string): Promise<boolean> {
+/** Returns the unlock cookie value for a correct password, or null. */
+export async function verifySharePassword(token: string, password: string): Promise<string | null> {
   const share = await db.query.meetingShares.findFirst({
     where: (s, { eq }) => eq(s.token, token),
   });
-  if (!share || !share.passwordHash) return false;
-  return passwordMatches(password, share.passwordHash);
+  if (!share || !share.passwordHash) return null;
+  if (!passwordMatches(password, share.passwordHash)) return null;
+  return unlockCookieValue(token, share.passwordHash);
 }
 
 export async function getPublicShare(
   token: string,
-  unlocked: boolean
+  unlockCookie: string | undefined
 ): Promise<{ payload: PublicSharePayload; expired: boolean } | null> {
   const share = await db.query.meetingShares.findFirst({
     where: (s, { eq }) => eq(s.token, token),
@@ -148,6 +160,7 @@ export async function getPublicShare(
 
   const expired = Boolean(share.expiresAt && share.expiresAt.getTime() < Date.now());
   const passwordProtected = Boolean(share.passwordHash);
+  const unlocked = share.passwordHash ? isUnlocked(token, share.passwordHash, unlockCookie) : false;
 
   if (!expired) {
     await db

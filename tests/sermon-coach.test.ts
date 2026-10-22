@@ -325,7 +325,7 @@ describe("Sermon Coach privacy", () => {
     const { meeting, user } = await seedCoachedSermon();
     const share = await createOrUpdateShare(meeting.id, user.id, { show_score: true });
 
-    const result = await getPublicShare(share.token, true);
+    const result = await getPublicShare(share.token, undefined);
     // Coaching-only text (the share legitimately includes the transcript, so
     // sermon quotes themselves would appear anyway).
     const serialized = JSON.stringify(result);
