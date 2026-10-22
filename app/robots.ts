@@ -5,9 +5,12 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/", "/login", "/blog"],
+      allow: ["/", "/login", "/blog", "/about", "/contact", "/solutions", "/features"],
       disallow: [
         "/api/",
+        // Private per-link pages (a booking invite and a call room).
+        "/book",
+        "/call",
         "/dashboard",
         "/meetings",
         "/settings",

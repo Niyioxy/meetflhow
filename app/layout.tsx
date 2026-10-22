@@ -7,7 +7,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
+import { SITE_URL, SITE_NAME, SITE_TITLE, SITE_DESCRIPTION } from "@/lib/site";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { AnalyticsPageview } from "@/components/analytics/analytics-pageview";
 
@@ -19,7 +19,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: `${SITE_NAME} — Meeting Intelligence`,
+  title: SITE_TITLE,
   description: SITE_DESCRIPTION,
   icons: {
     icon: "/logo-icon.svg",
@@ -31,13 +31,13 @@ export const metadata: Metadata = {
     type: "website",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: `${SITE_NAME} — Meeting Intelligence`,
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     images: ["/logo-og.png"],
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} — Meeting Intelligence`,
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     images: ["/logo-og.png"],
   },

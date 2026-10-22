@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { SiteFooter } from "@/components/marketing/site-footer";
+import { MARKETING_PAGES, marketingPagePath } from "@/lib/marketing-pages";
 import {
   Mic,
   FileAudio,
@@ -376,6 +377,29 @@ export function LandingPage() {
                 ))}
               </div>
             </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Use cases and integrations — internal links to the dedicated pages */}
+      <Section className="border-t border-border">
+        <div className="mb-10 text-center">
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Shaped to what you record</h2>
+          <p className="mt-3 text-muted-foreground">
+            A sermon, a podcast and a sales call each get output that fits them.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {MARKETING_PAGES.map((page) => (
+            <Link key={marketingPagePath(page)} href={marketingPagePath(page)} className="group h-full">
+              <Card className="h-full transition-colors group-hover:border-[rgba(37,99,235,0.4)]">
+                <CardHeader>
+                  <p className="text-xs font-medium text-[var(--blue-light)]">{page.eyebrow}</p>
+                  <CardTitle className="text-base">{page.h1}</CardTitle>
+                  <CardDescription>{page.metaDescription}</CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
           ))}
         </div>
       </Section>

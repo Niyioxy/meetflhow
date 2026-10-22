@@ -3,8 +3,21 @@ import type { NextRequest } from "next/server";
 
 // /share/[token] links are meant for people without an account (they carry
 // their own password/expiry gate), and /privacy + /terms must be readable
-// before signing up.
-const PUBLIC_PATH_PREFIXES = ["/login", "/blog", "/book", "/share", "/privacy", "/terms"];
+// before signing up. /about and /contact are the trust pages a first-time
+// visitor checks before creating an account.
+const PUBLIC_PATH_PREFIXES = [
+  "/login",
+  "/blog",
+  "/book",
+  "/share",
+  "/privacy",
+  "/terms",
+  "/about",
+  "/contact",
+  // Public marketing pages for each use case and integration.
+  "/solutions",
+  "/features",
+];
 
 // NextAuth's `database` session strategy can't be verified at the Edge
 // (it requires a DB lookup), so middleware only does an optimistic check
