@@ -20,6 +20,7 @@ import {
   IconLayoutKanban,
   IconCheckbox,
   IconSettings,
+  IconCreditCard,
   IconChartBar,
   IconUsers,
   IconMessageChatbot,
@@ -34,6 +35,7 @@ const links = [
   { href: "/ask", labelKey: "ask", icon: IconMessageChatbot },
   { href: "/tasks", labelKey: "tasks", icon: IconLayoutKanban },
   { href: "/todos", labelKey: "todos", icon: IconCheckbox },
+  { href: "/billing", labelKey: "billing", icon: IconCreditCard },
   { href: "/settings", labelKey: "settings", icon: IconSettings },
 ] as const;
 

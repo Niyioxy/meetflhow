@@ -19,7 +19,8 @@
     "tasks": "Tareas",
     "todos": "Pendientes",
     "team": "Equipo",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "billing": "Facturación"
   },
   "topbar": {
     "language": "Idioma"

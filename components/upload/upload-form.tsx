@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import { upload } from "@vercel/blob/client";
 import { webUploadPath } from "@/lib/blob-urls";
+import { apiError, toastApiError } from "@/lib/plan-limit-client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -85,14 +86,14 @@ export function UploadForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Upload failed");
+        throw apiError(data, "Upload failed");
       }
 
       toast.success("Meeting processed");
       router.push(`/meetings/${data.meetingId}`);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
+      toastApiError(error, router.push);
     } finally {
       setFileSubmitting(false);
     }
@@ -121,14 +122,14 @@ export function UploadForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Analysis failed");
+        throw apiError(data, "Analysis failed");
       }
 
       toast.success("Transcript analyzed");
       router.push(`/meetings/${data.meetingId}`);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
+      toastApiError(error, router.push);
     } finally {
       setPasteSubmitting(false);
     }

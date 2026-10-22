@@ -19,7 +19,8 @@
     "tasks": "任务",
     "todos": "待办事项",
     "team": "团队",
-    "settings": "设置"
+    "settings": "设置",
+    "billing": "账单"
   },
   "topbar": {
     "language": "语言"

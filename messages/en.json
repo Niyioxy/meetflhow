@@ -19,7 +19,8 @@
     "tasks": "Tasks",
     "todos": "Todos",
     "team": "Team",
-    "settings": "Settings"
+    "settings": "Settings",
+    "billing": "Billing"
   },
   "topbar": {
     "language": "Language"

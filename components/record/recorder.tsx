@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useSession } from "next-auth/react";
 import { upload } from "@vercel/blob/client";
 import { webUploadPath } from "@/lib/blob-urls";
+import { apiError, toastApiError } from "@/lib/plan-limit-client";
 import { useRecording } from "@/components/providers/recording-provider";
 import { useAudioLevel } from "@/hooks/use-audio-level";
 import { useWorkspace } from "@/components/providers/workspace-provider";
@@ -132,7 +133,7 @@ export function Recorder({
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save recording");
+      if (!res.ok) throw apiError(data, "Failed to save recording");
 
       setSavedMeetingId(data.meetingId);
       setAutoSaveStatus("saved");
@@ -140,11 +141,7 @@ export function Recorder({
       return data.meetingId as string;
     } catch (err) {
       setAutoSaveStatus("failed");
-      toast.error(
-        err instanceof Error
-          ? `Couldn't save recording automatically: ${err.message}`
-          : "Couldn't save recording automatically"
-      );
+      toastApiError(err, router.push, "Couldn't save recording automatically: ");
       return null;
     }
   }

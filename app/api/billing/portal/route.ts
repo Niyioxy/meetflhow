@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   try {
     const portalSession = await getPolarClient().customerSessions.create({
       external_customer_id: workspaceId,
-      return_url: `${process.env.NEXTAUTH_URL}/settings/workspace`,
+      return_url: `${process.env.NEXTAUTH_URL}/billing`,
     });
 
     return NextResponse.json({ url: portalSession.customer_portal_url });

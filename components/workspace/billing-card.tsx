@@ -10,14 +10,19 @@ import type { WorkspacePlan } from "@/db/schema";
 
 export function BillingCard({
   workspaceId,
+  workspaceName,
   plan,
   isOwner,
 }: {
   workspaceId: string;
+  /** Shown as the card title (the billing page lists several workspaces). */
+  workspaceName?: string;
   plan: WorkspacePlan;
   isOwner: boolean;
 }) {
   const [usage, setUsage] = useState<{ count: number; cap: number } | null>(null);
+  // null until known. false means this server can't take payments yet.
+  const [billingEnabled, setBillingEnabled] = useState<boolean | null>(null);
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
@@ -27,7 +32,10 @@ export function BillingCard({
     }
     fetch(`/api/billing/usage?workspaceId=${workspaceId}`)
       .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => setUsage({ count: data.count, cap: data.cap }))
+      .then((data) => {
+        setUsage({ count: data.count, cap: data.cap });
+        setBillingEnabled(data.billing_enabled !== false);
+      })
       .catch(() => setUsage(null));
   }, [workspaceId, plan]);
 
@@ -68,7 +76,7 @@ export function BillingCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Billing</CardTitle>
+        <CardTitle>{workspaceName ?? "Billing"}</CardTitle>
         <CardDescription>
           {plan === "team"
             ? "This workspace is on the Team plan — unlimited recordings."
@@ -92,6 +100,10 @@ export function BillingCard({
               {redirecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Manage subscription
             </Button>
+          ) : billingEnabled === false ? (
+            <span className="max-w-[16rem] text-right text-xs text-muted-foreground">
+              Paid plans aren&apos;t open yet. You&apos;re on the Free plan and nothing is charged.
+            </span>
           ) : (
             <Button onClick={handleUpgrade} disabled={redirecting}>
               {redirecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

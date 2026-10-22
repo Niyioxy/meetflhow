@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getWorkspaceMember, getWorkspaceOrThrow, requireRole, workspaceErrorResponse } from "@/lib/workspace-auth";
 import { getPolarClient } from "@/lib/polar/client";
+import { isBillingConfigured } from "@/lib/billing";
 import { z } from "zod";
 
 const bodySchema = z.object({
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
   }
 
   const productId = process.env.POLAR_PRODUCT_ID_TEAM_MONTHLY;
-  if (!productId || !process.env.POLAR_ACCESS_TOKEN) {
+  if (!productId || !isBillingConfigured()) {
     return NextResponse.json({ error: "Billing is not configured on this server yet" }, { status: 503 });
   }
 
@@ -49,8 +50,8 @@ export async function POST(req: Request) {
       customer_email: session.user.email ?? undefined,
       customer_name: workspace.name,
       metadata: { workspaceId },
-      success_url: `${process.env.NEXTAUTH_URL}/settings/workspace?billing=success`,
-      return_url: `${process.env.NEXTAUTH_URL}/settings/workspace?billing=cancelled`,
+      success_url: `${process.env.NEXTAUTH_URL}/billing?billing=success`,
+      return_url: `${process.env.NEXTAUTH_URL}/billing?billing=cancelled`,
     });
 
     return NextResponse.json({ url: checkout.url });

@@ -8,6 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: ["/", "/login", "/blog", "/about", "/contact", "/solutions", "/features"],
       disallow: [
         "/api/",
+        "/billing",
         // Private per-link pages (a booking invite and a call room).
         "/book",
         "/call",

@@ -5,7 +5,7 @@ import { meetings, contentTypeEnum, type ContentType } from "@/db/schema";
 import { triggerInternalStep } from "@/lib/internal-auth";
 import { getWorkspaceMember, getWorkspaceOrThrow } from "@/lib/workspace-auth";
 import { isContentTypeAllowed } from "@/lib/organization-types";
-import { canRecordMeeting, FREE_TIER_MONTHLY_RECORDINGS } from "@/lib/billing";
+import { canRecordMeeting, FREE_TIER_MONTHLY_RECORDINGS, PLAN_LIMIT_CODE } from "@/lib/billing";
 import { logMeetingEvent } from "@/lib/meeting-events";
 import { isOwnWebBlobUrl } from "@/lib/blob-urls";
 import { eq } from "drizzle-orm";
@@ -62,6 +62,7 @@ export async function POST(req: Request) {
         return NextResponse.json(
           {
             error: `Free plan limit reached (${FREE_TIER_MONTHLY_RECORDINGS} recordings/month) — upgrade to Team for unlimited recordings.`,
+            code: PLAN_LIMIT_CODE,
           },
           { status: 403 }
         );

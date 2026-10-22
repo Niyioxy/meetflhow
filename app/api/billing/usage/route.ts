@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getWorkspaceMember, workspaceErrorResponse } from "@/lib/workspace-auth";
-import { getMonthlyRecordingCount, FREE_TIER_MONTHLY_RECORDINGS } from "@/lib/billing";
+import { getMonthlyRecordingCount, FREE_TIER_MONTHLY_RECORDINGS, isBillingConfigured } from "@/lib/billing";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -21,5 +21,5 @@ export async function GET(req: Request) {
   }
 
   const count = await getMonthlyRecordingCount(workspaceId);
-  return NextResponse.json({ count, cap: FREE_TIER_MONTHLY_RECORDINGS });
+  return NextResponse.json({ count, cap: FREE_TIER_MONTHLY_RECORDINGS, billing_enabled: isBillingConfigured() });
 }
