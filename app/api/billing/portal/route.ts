@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getWorkspaceMember, getWorkspaceOrThrow, requireRole, workspaceErrorResponse } from "@/lib/workspace-auth";
-import { getStripeClient } from "@/lib/stripe/client";
+import { getPolarClient } from "@/lib/polar/client";
 import { z } from "zod";
 
 const bodySchema = z.object({
@@ -30,20 +30,19 @@ export async function POST(req: Request) {
     return workspaceErrorResponse(error);
   }
 
-  if (!workspace.stripeCustomerId) {
+  if (!workspace.billingSubscriptionId) {
     return NextResponse.json({ error: "This workspace has no billing account yet" }, { status: 400 });
   }
 
   try {
-    const stripe = getStripeClient();
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: workspace.stripeCustomerId,
+    const portalSession = await getPolarClient().customerSessions.create({
+      external_customer_id: workspaceId,
       return_url: `${process.env.NEXTAUTH_URL}/settings/workspace`,
     });
 
-    return NextResponse.json({ url: portalSession.url });
+    return NextResponse.json({ url: portalSession.customer_portal_url });
   } catch (error) {
-    console.error("Failed to create Stripe billing portal session", error);
+    console.error("Failed to create Polar customer portal session", error);
     return NextResponse.json({ error: "Failed to open billing portal" }, { status: 500 });
   }
 }

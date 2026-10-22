@@ -106,8 +106,10 @@ export const workspaces = pgTable("workspaces", {
   // communication only and never comments on doctrine.
   sermonCoachTradition: text("sermon_coach_tradition"),
   avatarColor: text("avatar_color"),
-  stripeCustomerId: text("stripe_customer_id"),
-  stripeSubscriptionId: text("stripe_subscription_id"),
+  // Billing-provider IDs (Polar). The DB columns keep their original
+  // "stripe_" names so switching providers didn't need a migration.
+  billingCustomerId: text("stripe_customer_id"),
+  billingSubscriptionId: text("stripe_subscription_id"),
   subscriptionStatus: text("subscription_status").$type<SubscriptionStatus>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

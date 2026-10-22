@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { db } from "@/db";
-import { workspaces } from "@/db/schema";
 import { getWorkspaceMember, getWorkspaceOrThrow, requireRole, workspaceErrorResponse } from "@/lib/workspace-auth";
-import { getStripeClient } from "@/lib/stripe/client";
+import { getPolarClient } from "@/lib/polar/client";
 import { z } from "zod";
 
 const bodySchema = z.object({
@@ -33,37 +30,32 @@ export async function POST(req: Request) {
     return workspaceErrorResponse(error);
   }
 
-  const priceId = process.env.STRIPE_PRICE_ID_TEAM_MONTHLY;
-  if (!priceId) {
+  if (workspace.plan === "team" && workspace.subscriptionStatus === "active") {
+    return NextResponse.json({ error: "This workspace is already on the Team plan" }, { status: 409 });
+  }
+
+  const productId = process.env.POLAR_PRODUCT_ID_TEAM_MONTHLY;
+  if (!productId || !process.env.POLAR_ACCESS_TOKEN) {
     return NextResponse.json({ error: "Billing is not configured on this server yet" }, { status: 503 });
   }
 
   try {
-    const stripe = getStripeClient();
-
-    let customerId = workspace.stripeCustomerId;
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: session.user.email ?? undefined,
-        name: workspace.name,
-        metadata: { workspaceId },
-      });
-      customerId = customer.id;
-      await db.update(workspaces).set({ stripeCustomerId: customerId }).where(eq(workspaces.id, workspaceId));
-    }
-
-    const checkoutSession = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      customer: customerId,
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.NEXTAUTH_URL}/settings/workspace?billing=success`,
-      cancel_url: `${process.env.NEXTAUTH_URL}/settings/workspace?billing=cancelled`,
+    // The workspace ID is the customer's external ID, so Polar links every
+    // order/subscription to the workspace and the webhook can find it again
+    // without us having to store a customer ID first.
+    const checkout = await getPolarClient().checkouts.create({
+      products: [productId],
+      external_customer_id: workspaceId,
+      customer_email: session.user.email ?? undefined,
+      customer_name: workspace.name,
       metadata: { workspaceId },
+      success_url: `${process.env.NEXTAUTH_URL}/settings/workspace?billing=success`,
+      return_url: `${process.env.NEXTAUTH_URL}/settings/workspace?billing=cancelled`,
     });
 
-    return NextResponse.json({ url: checkoutSession.url });
+    return NextResponse.json({ url: checkout.url });
   } catch (error) {
-    console.error("Failed to create Stripe checkout session", error);
+    console.error("Failed to create Polar checkout", error);
     return NextResponse.json({ error: "Failed to start checkout" }, { status: 500 });
   }
 }
