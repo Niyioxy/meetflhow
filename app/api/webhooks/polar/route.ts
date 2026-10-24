@@ -30,6 +30,12 @@ export async function POST(req: Request) {
       console.error("Polar webhook signature verification failed");
       return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
+    // Validly signed, but an event type this SDK version doesn't know (Polar
+    // adds new ones over time). Acknowledge it: a 4xx makes Polar retry and
+    // eventually disable the endpoint over an event we would ignore anyway.
+    if (error instanceof webhooks.PolarWebhookUnknownTypeError) {
+      return NextResponse.json({ received: true, ignored: true });
+    }
     if (error instanceof webhooks.PolarWebhookError) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
