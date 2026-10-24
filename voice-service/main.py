@@ -27,7 +27,9 @@ def health():
 @app.post("/embed")
 async def embed(file: UploadFile, authorization: str = Header(default="")):
     # Fail closed: without a configured secret, reject everything.
-    if not SERVICE_SECRET or not hmac.compare_digest(authorization, f"Bearer {SERVICE_SECRET}"):
+    # compare_digest raises on non-ASCII str, so compare bytes to answer 401, not 500.
+    expected = f"Bearer {SERVICE_SECRET}".encode()
+    if not SERVICE_SECRET or not hmac.compare_digest(authorization.encode(), expected):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename or "")[1] or ".bin") as raw_tmp:
