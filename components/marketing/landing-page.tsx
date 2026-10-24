@@ -223,7 +223,7 @@ const FAQS = [
 const PLANS = [
   {
     name: "Free",
-    price: "$0",
+    price: "£0",
     period: "forever",
     description: "Everything you need to try MeetFlhow properly.",
     features: [
@@ -238,7 +238,7 @@ const PLANS = [
   },
   {
     name: "Team",
-    price: "$15",
+    price: "£15",
     period: "/ month per workspace",
     description: "For teams that don't want to think about limits.",
     features: [
