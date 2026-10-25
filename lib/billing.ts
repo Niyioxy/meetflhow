@@ -10,7 +10,19 @@ export const FREE_TIER_MONTHLY_RECORDINGS = 5;
  * can only fail.
  */
 export function isBillingConfigured(): boolean {
-  return Boolean(process.env.POLAR_ACCESS_TOKEN && process.env.POLAR_PRODUCT_ID_TEAM_MONTHLY);
+  return Boolean(process.env.POLAR_ACCESS_TOKEN?.trim() && teamProductId());
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The Team product's id, or null if it's unset or not a UUID. A wrong value
+ * (a secret pasted into the wrong variable once) must read as "not configured"
+ * rather than being sent to Polar, whose error echoes the input back into logs.
+ */
+export function teamProductId(): string | null {
+  const id = process.env.POLAR_PRODUCT_ID_TEAM_MONTHLY?.trim();
+  return id && UUID.test(id) ? id : null;
 }
 
 /** Machine-readable marker the UI uses to turn the limit error into an Upgrade action. */

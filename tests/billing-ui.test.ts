@@ -17,10 +17,11 @@ import { POST as checkoutRoute } from "@/app/api/billing/checkout/route";
 import { POST as uploadRoute } from "@/app/api/meetings/upload/route";
 
 const ENV_KEYS = ["POLAR_ACCESS_TOKEN", "POLAR_PRODUCT_ID_TEAM_MONTHLY"] as const;
+const TEST_PRODUCT_ID = "11111111-2222-3333-4444-555555555555";
 
 function configureBilling(on: boolean) {
   for (const key of ENV_KEYS) {
-    if (on) process.env[key] = `test-${key}`;
+    if (on) process.env[key] = key === "POLAR_PRODUCT_ID_TEAM_MONTHLY" ? TEST_PRODUCT_ID : `test-${key}`;
     else delete process.env[key];
   }
 }
@@ -51,6 +52,8 @@ describe("isBillingConfigured", () => {
     process.env.POLAR_ACCESS_TOKEN = "t";
     expect(isBillingConfigured()).toBe(false);
     process.env.POLAR_PRODUCT_ID_TEAM_MONTHLY = "p";
+    expect(isBillingConfigured()).toBe(false);
+    process.env.POLAR_PRODUCT_ID_TEAM_MONTHLY = TEST_PRODUCT_ID;
     expect(isBillingConfigured()).toBe(true);
   });
 });

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getWorkspaceMember, getWorkspaceOrThrow, requireRole, workspaceErrorResponse } from "@/lib/workspace-auth";
 import { getPolarClient } from "@/lib/polar/client";
-import { isBillingConfigured } from "@/lib/billing";
+import { isBillingConfigured, teamProductId } from "@/lib/billing";
 import { z } from "zod";
 
 const bodySchema = z.object({
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "This workspace is already on the Team plan" }, { status: 409 });
   }
 
-  const productId = process.env.POLAR_PRODUCT_ID_TEAM_MONTHLY;
+  const productId = teamProductId();
   if (!productId || !isBillingConfigured()) {
     return NextResponse.json({ error: "Billing is not configured on this server yet" }, { status: 503 });
   }
@@ -56,7 +56,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: checkout.url });
   } catch (error) {
-    console.error("Failed to create Polar checkout", error);
+    // Status and message only: Polar's validation errors echo the request
+    // input, and logging the whole error object would copy it into the logs.
+    const status = (error as { statusCode?: number }).statusCode;
+    console.error("Failed to create Polar checkout", status ?? "", error instanceof Error ? error.name : "");
     return NextResponse.json({ error: "Failed to start checkout" }, { status: 500 });
   }
 }
