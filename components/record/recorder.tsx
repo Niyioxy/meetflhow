@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -107,7 +107,20 @@ export function Recorder({
     a.click();
   }
 
-  async function autoSaveRecording(): Promise<string | null> {
+  // One upload at a time: a long recording takes a minute to save, and a click
+  // on Save during that minute used to start a second upload — two meetings.
+  const inflightSave = useRef<Promise<string | null> | null>(null);
+
+  function autoSaveRecording(): Promise<string | null> {
+    if (inflightSave.current) return inflightSave.current;
+    const save = saveRecordingOnce().finally(() => {
+      inflightSave.current = null;
+    });
+    inflightSave.current = save;
+    return save;
+  }
+
+  async function saveRecordingOnce(): Promise<string | null> {
     if (!audioBlob) return null;
     setAutoSaveStatus("saving");
     try {
@@ -159,29 +172,25 @@ export function Recorder({
     if (!audioBlob) return;
     setSubmitting(true);
     try {
-      let meetingId = savedMeetingId;
+      // Auto-save may still be in flight (this waits for it rather than
+      // starting a second upload) or may have failed (this click is the retry).
+      const meetingId = savedMeetingId ?? (await autoSaveRecording());
+      if (!meetingId) throw new Error("Recording isn't saved yet — check your connection and try again");
 
-      if (!meetingId) {
-        // Auto-save hasn't succeeded yet (still in flight, or failed) —
-        // this click does double duty as the retry.
-        meetingId = await autoSaveRecording();
-        if (!meetingId) throw new Error("Recording isn't saved yet — check your connection and try again");
-      } else {
-        // Already durably saved; this just applies whatever the user edited.
-        const res = await fetch(`/api/meetings/${meetingId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: title || "Recorded meeting",
-            platform,
-            contentType,
-            ...(activeWorkspaceId ? { sharedWithWorkspace: shared } : {}),
-          }),
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || "Failed to save changes");
-        }
+      // Already durably saved; this applies whatever the user edited meanwhile.
+      const res = await fetch(`/api/meetings/${meetingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title || "Recorded meeting",
+          platform,
+          contentType,
+          ...(activeWorkspaceId ? { sharedWithWorkspace: shared } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save changes");
       }
 
       toast.success("Recording processed");
