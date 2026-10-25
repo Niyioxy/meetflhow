@@ -8,12 +8,15 @@ type PolarClient = ReturnType<typeof createPolar>;
 let polarClient: PolarClient | null = null;
 
 export function getPolarClient(): PolarClient {
-  if (!process.env.POLAR_ACCESS_TOKEN) {
+  // Trimmed: a stray newline or space from pasting the secret turns a valid
+  // token into a 401 that looks like a revoked one.
+  const accessToken = process.env.POLAR_ACCESS_TOKEN?.trim();
+  if (!accessToken) {
     throw new Error("POLAR_ACCESS_TOKEN is not set");
   }
   if (!polarClient) {
     polarClient = createPolar({
-      accessToken: process.env.POLAR_ACCESS_TOKEN,
+      accessToken,
       // Sandbox and production use separate tokens, products and webhooks.
       environment: process.env.POLAR_SERVER === "sandbox" ? "sandbox" : "production",
     });
