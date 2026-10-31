@@ -6,14 +6,14 @@ import { toast } from "sonner";
 import DailyIframe, { type DailyCall } from "@daily-co/daily-js";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, PhoneOff, Loader2, Radio } from "lucide-react";
+import { Mic, MicOff, PhoneOff, Loader2, Radio, MessageSquare } from "lucide-react";
+import { useCallChat, CallChatPanel } from "@/components/call/call-chat";
 
 interface Participant {
   sessionId: string;
   name: string;
   isLocal: boolean;
   isMuted: boolean;
-  isSpeaking: boolean;
 }
 
 type CallStatus = "connecting" | "in-call" | "ended" | "error";
@@ -26,6 +26,14 @@ export function CallRoom({ callRoomId }: { callRoomId: string }) {
   const [isOwner, setIsOwner] = useState(false);
   const [muted, setMuted] = useState(false);
   const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null);
+  const [call, setCall] = useState<DailyCall | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const chatOpenRef = useRef(chatOpen);
+  chatOpenRef.current = chatOpen;
+  const chat = useCallChat(call, () => {
+    if (!chatOpenRef.current) setUnread((n) => n + 1);
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +46,6 @@ export function CallRoom({ callRoomId }: { callRoomId: string }) {
           name: p.user_name || "Someone",
           isLocal: p.local,
           isMuted: !p.audio,
-          isSpeaking: p.session_id === activeSpeakerId,
         }))
       );
     }
@@ -57,6 +64,7 @@ export function CallRoom({ callRoomId }: { callRoomId: string }) {
           videoSource: false,
         });
         callRef.current = call;
+        setCall(call);
 
         call
           .on("joined-meeting", () => {
@@ -95,6 +103,7 @@ export function CallRoom({ callRoomId }: { callRoomId: string }) {
       callRef.current?.leave().catch(() => {});
       callRef.current?.destroy().catch(() => {});
       callRef.current = null;
+      setCall(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callRoomId]);
@@ -154,7 +163,7 @@ export function CallRoom({ callRoomId }: { callRoomId: string }) {
                       {p.isLocal && " (you)"}
                     </span>
                     <div className="flex items-center gap-2">
-                      {p.isSpeaking && <span className="h-2 w-2 rounded-full bg-[var(--green)]" />}
+                      {p.sessionId === activeSpeakerId && <span className="h-2 w-2 rounded-full bg-[var(--green)]" />}
                       {p.isMuted ? (
                         <MicOff className="h-4 w-4 text-muted-foreground" />
                       ) : (
@@ -169,11 +178,30 @@ export function CallRoom({ callRoomId }: { callRoomId: string }) {
                 <Button variant="outline" size="lg" onClick={toggleMute}>
                   {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                 </Button>
+                <Button
+                  variant={chatOpen ? "secondary" : "outline"}
+                  size="lg"
+                  onClick={() => {
+                    setChatOpen((open) => !open);
+                    setUnread(0);
+                  }}
+                  aria-label={chatOpen ? "Hide chat" : "Show chat"}
+                  className="relative"
+                >
+                  <MessageSquare className="h-5 w-5" />
+                  {unread > 0 && !chatOpen && (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--red)] px-1 text-[11px] font-semibold text-white">
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
+                </Button>
                 <Button variant="destructive" size="lg" onClick={leaveCall}>
                   <PhoneOff className="mr-2 h-5 w-5" />
                   Leave
                 </Button>
               </div>
+
+              {chatOpen && <CallChatPanel messages={chat.messages} onSend={chat.send} />}
 
               {isOwner && (
                 <Button variant="ghost" size="sm" onClick={endCall} className="text-muted-foreground">
