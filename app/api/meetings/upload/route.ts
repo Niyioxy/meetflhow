@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { meetings, contentTypeEnum, type ContentType } from "@/db/schema";
 import { triggerInternalStep } from "@/lib/internal-auth";
-import { getWorkspaceMember, getWorkspaceOrThrow } from "@/lib/workspace-auth";
+import { getWorkspaceMember, getWorkspaceOrThrow, workspaceErrorResponse } from "@/lib/workspace-auth";
 import { isContentTypeAllowed } from "@/lib/organization-types";
 import { canRecordMeeting, FREE_TIER_MONTHLY_RECORDINGS, PLAN_LIMIT_CODE } from "@/lib/billing";
 import { logMeetingEvent } from "@/lib/meeting-events";
@@ -49,26 +49,30 @@ export async function POST(req: Request) {
     : "meeting";
 
   if (workspaceId) {
+    // Only a genuine membership/lookup failure is a 403. Anything else (e.g. a
+    // DB error from an unapplied migration) used to be reported as "Not a
+    // member of that workspace", hiding the real cause.
+    let workspace: Awaited<ReturnType<typeof getWorkspaceOrThrow>>;
     try {
       await getWorkspaceMember(session.user.id, workspaceId);
-      const workspace = await getWorkspaceOrThrow(workspaceId);
-      if (!isContentTypeAllowed(workspace.organizationType, contentType)) {
-        return NextResponse.json(
-          { error: `This workspace only supports ${workspace.organizationType} recordings` },
-          { status: 403 }
-        );
-      }
-      if (!(await canRecordMeeting(workspace))) {
-        return NextResponse.json(
-          {
-            error: `Free plan limit reached (${FREE_TIER_MONTHLY_RECORDINGS} recordings/month) — upgrade to Team for unlimited recordings.`,
-            code: PLAN_LIMIT_CODE,
-          },
-          { status: 403 }
-        );
-      }
-    } catch {
-      return NextResponse.json({ error: "Not a member of that workspace" }, { status: 403 });
+      workspace = await getWorkspaceOrThrow(workspaceId);
+    } catch (error) {
+      return workspaceErrorResponse(error);
+    }
+    if (!isContentTypeAllowed(workspace.organizationType, contentType)) {
+      return NextResponse.json(
+        { error: `This workspace only supports ${workspace.organizationType} recordings` },
+        { status: 403 }
+      );
+    }
+    if (!(await canRecordMeeting(workspace))) {
+      return NextResponse.json(
+        {
+          error: `Free plan limit reached (${FREE_TIER_MONTHLY_RECORDINGS} recordings/month) — upgrade to Team for unlimited recordings.`,
+          code: PLAN_LIMIT_CODE,
+        },
+        { status: 403 }
+      );
     }
   }
 
